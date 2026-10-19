@@ -143,6 +143,19 @@ class ActionAndTarget(NamedTuple):
     target: Square
 
 
+class Claim(NamedTuple):
+    """
+    A claim being answered: the claimer's tile at `start` claims `action` on `target`.
+    `reflected` when the target's tile has claimed to reflect it, and it's the
+    reflect being answered.
+    """
+
+    start: Square
+    action: Action
+    target: Square
+    reflected: bool = False
+
+
 class GameResult(str, Enum):
     ONGOING = "Ongoing"
     NORTH_WINS = "North Player Wins!"

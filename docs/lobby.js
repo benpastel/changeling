@@ -17,6 +17,8 @@ import {
 const TILE_MODES = ["starter", "random", "custom"];
 // must match python clock.TIME_MODES
 const TIME_MODES = ["fast", "medium", "slow", "unlimited"];
+// must match python bots.LEVELS
+const BOT_LEVELS = ["easy", "medium", "hard"];
 const EVERY_TILE = ALL_TILES.map(([tile]) => tile);
 
 function element(tag, className, text) {
@@ -105,6 +107,14 @@ function renderOpponent(table, actions) {
     const name = element("span", "seat-name", occupant.name);
     name.classList.toggle("gone", !occupant.connected);
     seat.append(name);
+    if (occupant.bot) {
+      // how well it plays; only the host can change it
+      const levels = element("div", "segmented small");
+      for (const level of BOT_LEVELS) {
+        levels.append(button(level === table.botLevel ? "on" : "", level, () => actions.setBotLevel(level), !table.amHost));
+      }
+      buttons.append(levels);
+    }
     if (occupant.bot && table.amHost) {
       buttons.append(button("btn small", "remove", actions.removeBot));
     }

@@ -24,7 +24,8 @@ from dataclasses import dataclass, field
 from websockets.exceptions import ConnectionClosed
 from websockets.server import WebSocketServerProtocol
 
-from server.agents import Agent, Human, RandomBot
+from server.agents import Agent, Human
+from server.bots import Bot, DEFAULT_LEVEL, LEVELS
 from server.clock import TIME_MODES
 from server.config import ALL_TILES, DEFAULT_TILES, TILES_PER_GAME
 from server.constants import Player, Tile
@@ -79,6 +80,9 @@ class Table:
 
     # one of clock.TIME_MODES
     time_mode: str = "medium"
+
+    # how well the bot plays, if it's seated: one of bots.LEVELS
+    bot_level: str = DEFAULT_LEVEL
 
     # the games won and points scored by whoever's seated; new when that changes
     tally: Tally = field(default_factory=Tally)
@@ -193,6 +197,8 @@ class Lobby:
             await self._set_tiles(user, event.get("mode"), event.get("tiles"))
         elif kind == "setTime":
             await self._set_time(user, event.get("mode"))
+        elif kind == "setBotLevel":
+            await self._set_bot_level(user, event.get("level"))
         elif kind == "start":
             await self._start(user)
         else:
@@ -365,6 +371,17 @@ class Lobby:
         table.time_mode = str(mode)
         await self._push_table(table)
 
+    async def _set_bot_level(self, user: User, level: object) -> None:
+        table = self._table_of(user)
+        if table is None or table.playing or table.host_id != user.id:
+            return
+        if level not in LEVELS or level == table.bot_level:
+            return
+        table.bot_level = str(level)
+        # a different bot is a different opponent
+        table.tally = Tally()
+        await self._push_table(table)
+
     async def _start(self, user: User) -> None:
         table = self._table_of(user)
         if table is None or table.playing or table.host_id != user.id:
@@ -380,7 +397,7 @@ class Lobby:
         for side, occupant in table.seats.items():
             assert occupant is not None
             if occupant == BOT:
-                agents[side] = RandomBot()
+                agents[side] = Bot(table.bot_level)
                 names[side] = "bot"
             else:
                 agents[side] = Human(seats[side])
@@ -447,6 +464,7 @@ class Lobby:
                 "mode": table.tile_mode,
                 "tiles": table.tiles,
                 "time": table.time_mode,
+                "botLevel": table.bot_level,
                 "mySide": my_side.value if my_side else None,
                 "amHost": table.host_id == user_id,
             },

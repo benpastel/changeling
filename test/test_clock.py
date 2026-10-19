@@ -1,7 +1,8 @@
 import asyncio
 
 from server import clock
-from server.agents import Human, RandomBot
+from server.agents import Human
+from server.bots import Bot
 from server.clock import TimeControl
 from server.constants import Player, OutEventType
 from server.game import play_one_game
@@ -28,7 +29,7 @@ def test_a_game_plays_itself_out_on_defaults(monkeypatch):
     )
     monkeypatch.setattr(clock, "LAG_GRACE", 0)
     seats = {player: SilentSeat() for player in Player}
-    players = {Player.N: RandomBot(delay=0), Player.S: Human(seats[Player.S])}
+    players = {Player.N: Bot("easy", delay=0), Player.S: Human(seats[Player.S])}
     names = {Player.N: "n", Player.S: "s"}
 
     score, _ = asyncio.run(

@@ -56,6 +56,9 @@ class LogEvent(BaseModel):
     # how each player's coins changed
     coins: dict[Player, int] = {}
     count: int = 0
+    # the piece that claimed, reflected, was revealed, was lost, or may have exchanged
+    # (see State.piece_ids)
+    piece: int | None = None
 
 
 class LogTurn(BaseModel):
@@ -92,6 +95,12 @@ class State(BaseModel):
     # The square of each tile in play on the board for each player.
     # See `tiles_on_board` for the corresponding tile.
     positions: dict[Player, list[Square]]
+
+    # A public id for each tile in play, corresponding to `positions`, that stays with
+    # the piece as it moves and changes identity, and is never reused, so a piece's
+    # claims can be followed through the log.
+    piece_ids: dict[Player, list[int]]
+    next_piece_id: int
 
     # The two tiles on each exchange square.
     # These correspond by index to exchange_positions.
@@ -229,6 +238,13 @@ class State(BaseModel):
             raise ValueError(f"Expected tile at {square}")
         return maybe_player
 
+    def piece_at(self, square: Square) -> int:
+        """The id of the piece on this square.  Error if there isn't one."""
+        for player in Player:
+            if square in self.positions[player]:
+                return self.piece_ids[player][self.positions[player].index(square)]
+        raise ValueError(f"Expected tile at {square}")
+
     def maybe_player_at(self, square: Square) -> Player | None:
         for player in Player:
             for s, other_square in enumerate(self.positions[player]):
@@ -255,6 +271,7 @@ class State(BaseModel):
         action: Action | None = None,
         coins: dict[Player, int] | None = None,
         count: int = 0,
+        piece: int | None = None,
     ) -> LogEvent:
         """
         Log an event in the current turn.
@@ -264,7 +281,12 @@ class State(BaseModel):
         if not self.public_log:
             self.new_log_turn(self.current_player)
         event = LogEvent(
-            kind=kind, player=player, action=action, coins=coins or {}, count=count
+            kind=kind,
+            player=player,
+            action=action,
+            coins=coins or {},
+            count=count,
+            piece=piece,
         )
         self.public_log[-1].events.append(event)
         return event
@@ -336,6 +358,8 @@ class State(BaseModel):
             exchange_tiles=exchange_tiles,
             # all tile positions are public knowledge
             positions=self.positions,
+            piece_ids=self.piece_ids,
+            next_piece_id=self.next_piece_id,
             # we can't see the unused tiles
             unused_tiles=unused_tiles,
             # we can see everything else
@@ -397,6 +421,7 @@ class State(BaseModel):
         for player in Player:
             assert 0 <= len(self.tiles_in_hand[player]) <= 2
             assert 0 <= len(self.tiles_on_board[player]) <= 2
+            assert len(self.piece_ids[player]) == len(self.positions[player])
             if len(self.tiles_on_board[player]) < 2:
                 # tiles in hand should have been exhausted before the player starts
                 # losing tiles on board
@@ -500,6 +525,8 @@ def new_state(
         tiles_on_board={Player.N: tiles[4:6], Player.S: tiles[6:8]},
         tiles_on_board_revealed={Player.N: [False, False], Player.S: [False, False]},
         positions=start_positions,
+        piece_ids={Player.N: [0, 1], Player.S: [2, 3]},
+        next_piece_id=4,
         exchange_tiles=[
             [tiles[8], tiles[9]],
             [tiles[10], tiles[11]],

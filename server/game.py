@@ -22,6 +22,7 @@ from server.constants import (
     OtherAction,
     Response,
     ActionAndTarget,
+    Claim,
     other_player,
 )
 from server.choices import send_prompt, send_waiting
@@ -66,17 +67,21 @@ async def _move_x2(
         players[other_player(player)].seat,
     )
     choices: list[Action] = [t for t in Tile if t != state.x2_tile and t != Tile.HIDDEN]
-    choice = await decide(
-        player,
-        False,
-        players[player].choose_action_or_square(
-            choices,
-            [],
-            "Move the ×2 to a different action.",
-            true_action_hint=None,
-        ),
-        lambda: random.choice(choices),
-    )
+    agent = players[player]
+    if isinstance(agent, Human):
+        choice = await decide(
+            player,
+            False,
+            agent.choose_action_or_square(
+                choices,
+                [],
+                "Move the ×2 to a different action.",
+                true_action_hint=None,
+            ),
+            lambda: random.choice(choices),
+        )
+    else:
+        choice = random.choice(choices)
     assert isinstance(choice, Tile)
     state.x2_tile = choice
     state.log(LogKind.X2, player, choice)
@@ -130,7 +135,7 @@ async def _resolve_exchange(
         # shuffle to hide which tile they placed
         shuffle(state.exchange_tiles[exchange_index])
 
-    state.log(LogKind.EXCHANGE, player)
+    state.log(LogKind.EXCHANGE, player, piece=state.piece_at(square))
 
 
 async def _resolve_smite(
@@ -214,8 +219,12 @@ async def _resolve_action(
 
         await clear_selection(players)
 
-    # we may have moved onto a special square or web
-    if action in (
+    # we may have moved onto a special square or web; a backstabber that killed
+    # stayed where it was
+    backstabbed = action == Tile.BACKSTABBER and state.maybe_player_at(target) != (
+        state.current_player
+    )
+    if not backstabbed and action in (
         OtherAction.MOVE,
         Tile.FLOWER,
         Tile.BIRD,
@@ -288,6 +297,16 @@ async def _select_action(
     )
     current_agent = players[state.current_player]
 
+    # a bot chooses its whole turn at once
+    if not isinstance(current_agent, Human):
+        start, action, target = await current_agent.choose_turn()
+        assert target in valid_targets(start, state)[action]
+        # show both players the proposed action
+        await broadcast_selection_changed(
+            state.current_player, start, action, target, players
+        )
+        return start, action, target
+
     possible_starts = state.positions[state.current_player]
     assert 1 <= len(possible_starts) <= 2
     if len(possible_starts) == 1:
@@ -298,25 +317,6 @@ async def _select_action(
             [], possible_starts, "Select a tile.", true_action_hint=None
         )
         start = cast(Square, choice)
-
-    # for bots, choose once
-    if not isinstance(current_agent, Human):
-        true_action_hint = state.maybe_tile_at(start)
-        actions_and_targets = valid_targets(start, state)
-        possible_actions = list(actions_and_targets.keys())
-        bot_action = await current_agent.choose_action_or_square(
-            possible_actions, [], "Select an action.", true_action_hint
-        )
-        assert isinstance(bot_action, Action)
-        target = await current_agent.choose_action_or_square(
-            [], actions_and_targets[bot_action], "Select a target.", None
-        )
-        assert isinstance(target, Square)
-        # show both players the proposed action
-        await broadcast_selection_changed(
-            state.current_player, start, bot_action, target, players
-        )
-        return start, bot_action, target
 
     # for humans, choose in a loop
     # to allow changing out choice of start square & action
@@ -456,8 +456,9 @@ async def _lose_tile(
     state.tiles_on_board[player].pop(position_index)
     state.positions[player].pop(position_index)
     state.tiles_on_board_revealed[player].pop(position_index)
+    piece = state.piece_ids[player].pop(position_index)
     state.discard.append(tile)
-    state.log(LogKind.LOSE, player, tile)
+    state.log(LogKind.LOSE, player, tile, piece=piece)
     state.score_point(other_player(player))
 
     hand_tiles = state.tiles_in_hand[player]
@@ -493,6 +494,8 @@ async def _lose_tile(
         state.tiles_on_board[player].append(replacement)
         state.positions[player].append(square)
         state.tiles_on_board_revealed[player].append(False)
+        state.piece_ids[player].append(state.next_piece_id)
+        state.next_piece_id += 1
 
     await clear_selection(players)
     await broadcast_state_changed(state, players)
@@ -508,7 +511,6 @@ async def _select_response(
     assert action in Tile
 
     player_at_target = state.maybe_player_at(target)
-    tile_at_target = state.maybe_tile_at(target)
 
     possible_responses: list[Response | Tile] = [
         Response.ACCEPT,
@@ -542,14 +544,18 @@ async def _select_response(
         players[state.other_player].choose_response(
             possible_responses,
             f"Opponent claimed {action}.  Choose your response.",
-            true_response_hint=tile_at_target,
+            Claim(start, action, target),
         ),
         lambda: Response.ACCEPT,
     )
 
 
 async def _select_reflect_response(
-    action: Action, state: State, players: dict[Player, Agent]
+    start: Square,
+    action: Action,
+    target: Square,
+    state: State,
+    players: dict[Player, Agent],
 ) -> Response:
     await send_waiting(
         "Deciding whether to challenge the reflect…",
@@ -561,7 +567,7 @@ async def _select_reflect_response(
         players[state.current_player].choose_response(
             [Response.ACCEPT, Response.CHALLENGE],
             f"Opponent reflected with {action}.  Choose your response.",
-            true_response_hint=None,
+            Claim(start, action, target, reflected=True),
         ),
         lambda: Response.ACCEPT,
     )
@@ -578,10 +584,7 @@ async def _select_smite_target(
     agent = players[player]
     targets = state.positions[other_player(player)]
     if not isinstance(agent, Human):
-        choice = await agent.choose_action_or_square(
-            [], targets, "Select a tile to smite ⚡", true_action_hint=None
-        )
-        return cast(Square, choice)
+        return await agent.choose_smite_target(targets)
 
     # a person picks the target from a smite drawn on each enemy tile
     smite = await agent.choose_action_or_square(
@@ -689,7 +692,9 @@ async def _play_one_turn(state: State, players: dict[Player, Agent]) -> None:
             continue
 
         # show the claim in the log while the opponent responds
-        claim = state.log(LogKind.CLAIM, state.current_player, action)
+        claim = state.log(
+            LogKind.CLAIM, state.current_player, action, piece=state.piece_at(start)
+        )
         await _show_log_keeping_selection(state, players, start, action, target)
 
         # ask opponent to accept, challenge, or reflect as appropriate
@@ -703,7 +708,12 @@ async def _play_one_turn(state: State, players: dict[Player, Agent]) -> None:
             state.log(LogKind.CHALLENGE, state.other_player)
             state.reveal_at(start)
             start_tile = state.tile_at(start)
-            state.log(LogKind.REVEAL, state.current_player, start_tile)
+            state.log(
+                LogKind.REVEAL,
+                state.current_player,
+                start_tile,
+                piece=state.piece_at(start),
+            )
             if action == start_tile:
                 # challenge fails
                 # original action succeeds
@@ -719,11 +729,18 @@ async def _play_one_turn(state: State, players: dict[Player, Agent]) -> None:
             assert action == response
             # the response was to reflect
             # which the original player may challenge
-            reflect = state.log(LogKind.REFLECT, state.other_player, response)
+            reflect = state.log(
+                LogKind.REFLECT,
+                state.other_player,
+                response,
+                piece=state.piece_at(target),
+            )
             await _show_log_keeping_selection(
                 state, players, start, action, target, reflect=response
             )
-            reflect_response = await _select_reflect_response(response, state, players)
+            reflect_response = await _select_reflect_response(
+                start, action, target, state, players
+            )
             target_tile = state.tile_at(target)
 
             if reflect_response == Response.ACCEPT:
@@ -740,7 +757,12 @@ async def _play_one_turn(state: State, players: dict[Player, Agent]) -> None:
                 # original action fails
                 state.log(LogKind.CHALLENGE, state.current_player)
                 state.reveal_at(target)
-                state.log(LogKind.REVEAL, state.other_player, target_tile)
+                state.log(
+                    LogKind.REVEAL,
+                    state.other_player,
+                    target_tile,
+                    piece=state.piece_at(target),
+                )
                 claim.cancelled = True
                 await clear_selection(players)
                 await _resolve_action(
@@ -750,7 +772,12 @@ async def _play_one_turn(state: State, players: dict[Player, Agent]) -> None:
             else:
                 state.log(LogKind.CHALLENGE, state.current_player)
                 state.reveal_at(target)
-                state.log(LogKind.REVEAL, state.other_player, target_tile)
+                state.log(
+                    LogKind.REVEAL,
+                    state.other_player,
+                    target_tile,
+                    piece=state.piece_at(target),
+                )
                 # challenge succeeds
                 # reflect fails
                 # original action succeeds
@@ -815,6 +842,10 @@ async def play_one_game(
     """
     # initialize a new game
     state = new_state(match_score, tiles, first_player, names)
+    # a bot follows the game through its own view of this state
+    for player, agent in players.items():
+        if not isinstance(agent, Human):
+            agent.start_game(state, player)
     await broadcast_state_changed(state, players)
     clock = start_clock(
         time_mode, {player: agent.seat for player, agent in players.items()}

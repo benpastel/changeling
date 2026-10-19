@@ -222,6 +222,7 @@ window.addEventListener("DOMContentLoaded", () => {
     removeBot: () => net.send({type: "removeBot"}),
     setTiles: (mode, tiles) => net.send({type: "setTiles", mode, tiles}),
     setTime: (mode) => net.send({type: "setTime", mode}),
+    setBotLevel: (level) => net.send({type: "setBotLevel", level}),
     start: () => net.send({type: "start"}),
     // before a game, the reference shows whichever tiles were clicked
     showRules: (entries) => {

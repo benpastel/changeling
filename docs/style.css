@@ -334,6 +334,13 @@ the tiles between.
   color: var(--faint);
 }
 
+/* the bot's level, sized like the buttons beside it */
+.segmented.small button {
+  height: 36px;
+  padding: 0 14px;
+  font-size: 12px;
+}
+
 /* fast, medium, slow, or unlimited */
 .time-area {
   padding: 22px 20px;
