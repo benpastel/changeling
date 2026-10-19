@@ -10,8 +10,7 @@ import {
   HIDDEN_TILE,
   EXCHANGE_MARK,
   ACTION_NAMES,
-  DESCRIPTIONS,
-  DIAGRAMS,
+  REFERENCE,
 } from "./constants.js";
 
 
@@ -316,51 +315,95 @@ function renderOther(player_view) {
   document.querySelector(".smite-cost .cost").textContent = `= $${player_view.smite_cost}`;
 }
 
-// what a tile, moving, smiting, or an answer to a claim does, a line to an effect;
-// the smite's cost is this game's
-function ruleLines(glyph, player_view) {
-  return glyph === "⚡"
-    ? [`on reaching $${player_view.smite_cost}`, "pay it to kill any enemy tile"]
-    : DESCRIPTIONS[glyph];
+// what a tile, moving, smiting, or an answer to a claim does (see REFERENCE), with
+// each use's price written out: its cost (the smite's being this game's) or its gain
+function ruleOf(glyph, player_view) {
+  const {uses, notes = []} = REFERENCE[glyph];
+  return {
+    uses: uses.map((use) => {
+      const cost = use.cost === "smite" ? player_view.smite_cost : use.cost;
+      const price = cost !== undefined
+        ? {kind: "cost", text: `$${cost}`}
+        : use.gain !== undefined ? {kind: "gain", text: `+$${use.gain}`} : null;
+      return {...use, price};
+    }),
+    notes,
+  };
+}
+
+function element(tag, className, text) {
+  const e = document.createElement(tag);
+  e.className = className;
+  if (text !== undefined) {
+    e.textContent = text;
+  }
+  return e;
 }
 
 function renderRules(list, player_view, entries = [...player_view.tiles_in_game, "↕", "⚡"]) {
-  // the reference: every tile in play, then moving and smiting, written out
+  // the reference: every tile in play, then moving and smiting, or a single one.  Each
+  // is its glyph and name, then a row to a use, its words then its boards (which
+  // illustrate the words, so they come after), then notes on what isn't a use
   list.innerHTML = "";
-  // two columns, filled top to bottom; a single entry gets the panel to itself
+  // a single entry gets the panel to itself
   list.classList.toggle("single", entries.length === 1);
-  list.style.gridTemplateRows = `repeat(${Math.ceil(entries.length / 2)}, auto)`;
+  // moving and smiting aren't a tile's, so any of your tiles stands in on their boards
   for (const glyph of entries) {
-    const row = document.createElement("div");
-    row.className = "rule";
-    const glyphElement = document.createElement("span");
-    glyphElement.className = "rule-glyph";
-    glyphElement.textContent = glyph;
-    const name = document.createElement("span");
-    name.className = "rule-name";
-    name.textContent = ACTION_NAMES[glyph];
-    // one bullet to an effect
-    const text = document.createElement("ul");
-    text.className = "rule-text";
-    for (const line of ruleLines(glyph, player_view)) {
-      const lineElement = document.createElement("li");
-      lineElement.textContent = line;
-      text.append(lineElement);
-    }
-    const boards = document.createElement("div");
-    boards.className = "rule-boards";
-    // moving and smiting aren't a tile's, so any of your tiles stands in
     const actor = glyph in TILES ? glyph : HIDDEN_TILE;
-    for (const diagram of DIAGRAMS[glyph] || []) {
-      boards.append(renderDiagram(diagram, actor));
+    const {uses, notes} = ruleOf(glyph, player_view);
+    const rule = element("div", "rule");
+    const head = element("div", "rule-head");
+    head.append(element("span", "rule-glyph", glyph), element("span", "rule-name", ACTION_NAMES[glyph]));
+    rule.append(head);
+    for (const use of uses) {
+      const row = element("div", "rule-use");
+      const words = element("div", "rule-words");
+      if (use.label || use.price) {
+        const title = element("div", "rule-title");
+        if (use.label) {
+          title.append(element("span", "rule-label", use.label));
+        }
+        if (use.price) {
+          title.append(element("span", `rule-price ${use.price.kind}`, use.price.text));
+        }
+        words.append(title);
+      }
+      // one bullet to an effect
+      const text = element("ul", "rule-text");
+      for (const line of use.lines) {
+        text.append(element("li", "", line));
+      }
+      words.append(text);
+      row.append(words);
+      if (use.boards) {
+        const boards = element("div", "rule-boards");
+        use.boards.forEach((diagram, i) => {
+          const figure = element("div", "rule-figure");
+          figure.append(renderDiagram(diagram, actor));
+          if (use.captions) {
+            figure.append(element("div", "rule-caption", use.captions[i]));
+          }
+          boards.append(figure);
+        });
+        row.append(boards);
+      }
+      rule.append(row);
     }
-    row.append(glyphElement, name, text, boards);
-    list.append(row);
+    if (notes.length) {
+      const footer = element("div", "rule-notes");
+      for (const [mark, text] of notes) {
+        const note = element("div", "rule-note");
+        note.append(element("span", "rule-mark", mark), element("span", "", text));
+        footer.append(note);
+      }
+      rule.append(footer);
+    }
+    list.append(rule);
   }
 }
 
 function renderDiagram(diagram, actor) {
-  // a mini board from DIAGRAMS: each square's token is its mark, then any suffixes;
+  // a mini board from BOARDS: each square's token is its mark, then any suffixes;
   // a diagram is its grid, or {grid, arrows}
   const {grid, arrows = []} = Array.isArray(diagram) ? {grid: diagram} : diagram;
   const board = document.createElement("div");
@@ -435,4 +478,4 @@ function renderArrows(arrows) {
   return svg;
 }
 
-export {createBoard, renderBoard, renderLog, renderHand, findCell, renderOther, renderRules, ruleLines, renderWebs};
+export {createBoard, renderBoard, renderLog, renderHand, findCell, renderOther, renderRules, ruleOf, renderWebs};

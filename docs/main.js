@@ -9,11 +9,11 @@ import {
   renderHand,
   renderOther,
   renderRules,
-  ruleLines,
+  ruleOf,
   renderWebs,
 } from "./renderState.js";
 
-import {ACTION_NAMES, DESCRIPTIONS} from "./constants.js";
+import {ACTION_NAMES, REFERENCE} from "./constants.js";
 
 import {renderSelection} from "./renderSelection.js";
 import {renderChoice} from "./renderChoice.js";
@@ -267,7 +267,7 @@ window.addEventListener("DOMContentLoaded", () => {
     for (let element = target; element && element !== document.body; element = element.parentElement) {
       const {name, tileName, tile} = element.dataset;
       const glyph = name ?? tileName ?? tile ?? (element.children.length === 0 ? element.textContent.trim() : "");
-      if (glyph in DESCRIPTIONS) {
+      if (glyph in REFERENCE) {
         return {element, glyph};
       }
     }
@@ -275,7 +275,7 @@ window.addEventListener("DOMContentLoaded", () => {
   };
   setUpTooltips((target) => {
     const found = describedAt(target);
-    return found && {element: found.element, name: ACTION_NAMES[found.glyph], lines: ruleLines(found.glyph, viewed())};
+    return found && {element: found.element, name: ACTION_NAMES[found.glyph], ...ruleOf(found.glyph, viewed())};
   });
   document.addEventListener("contextmenu", (event) => {
     const found = describedAt(event.target);

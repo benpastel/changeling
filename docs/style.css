@@ -1248,6 +1248,19 @@ the same place
   text-transform: uppercase;
   color: var(--muted);
 }
+/* a use's price, red to pay or blue to gain; a second use is an alternative */
+.tip-price.cost { color: var(--them); }
+.tip-price.gain { color: var(--you); }
+.tip-or { color: var(--faint); }
+.tip-note {
+  margin-top: 3px;
+  color: var(--muted);
+}
+.tip-mark {
+  display: inline-block;
+  width: 1.5em;
+  color: var(--faint);
+}
 .tip-more {
   margin-top: 6px;
   display: flex;
@@ -1495,35 +1508,77 @@ the same place
   max-width: 88vw;
   padding-right: max(4vw, 64px);
 }
-.rules-list.single {
-  grid-template-columns: auto;
-}
-/* two columns, filled top to bottom (renderRules sets the rows) */
+/* every tile: two columns, filled top to bottom, each tile kept whole */
 .rules-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-auto-flow: column;
-  gap: calc(var(--sq) * 0.9) 4vw;
+  columns: 2;
+  column-gap: 4vw;
+}
+.rules-list.single {
+  columns: auto;
+}
+.rules-list .rule {
+  break-inside: avoid;
+  padding-bottom: calc(var(--sq) * 1.2);
+}
+.rules-list.single .rule {
+  padding-bottom: 0;
 }
 .rule {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-rows: auto 1fr;
-  column-gap: 18px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+}
+.rule-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 .rule-glyph {
-  grid-row: 1 / 3;
-  font-size: calc(var(--sq) * 2.6);
+  font-size: calc(var(--sq) * 2.2);
   line-height: 1;
 }
 .rule-name {
-  margin-top: 6px;
-  font-size: calc(var(--sq) * 0.6);
+  font-size: calc(var(--sq) * 0.65);
   font-weight: normal;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
 }
+/* a use: its words, then the boards that illustrate them; the boards drop below the
+   words when there's no room beside them */
+.rule-use {
+  margin-top: calc(var(--sq) * 0.7);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px 22px;
+}
+.rule-words {
+  flex: 1;
+  min-width: calc(var(--sq) * 8);
+  max-width: calc(var(--sq) * 12);
+}
+.rule-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.rule-label {
+  font-size: calc(var(--sq) * 0.48);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/* what it costs (red) or gains (blue) */
+.rule-price {
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: calc(var(--sq) * 0.5);
+  line-height: 1.5;
+}
+.rule-price.cost { color: var(--them); }
+.rule-price.gain { color: var(--you); }
 .rule-text {
   margin: 0;
   padding: 0;
@@ -1545,12 +1600,39 @@ the same place
   left: 0.15em;
   color: var(--faint);
 }
+.rule-caption {
+  margin-top: 4px;
+  font-size: calc(var(--sq) * 0.46);
+  text-align: center;
+  color: var(--muted);
+}
+/* what isn't a use (reflects, webs, going again), quieter, under a hairline */
+.rule-notes {
+  margin-top: calc(var(--sq) * 0.7);
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: calc(var(--sq) * 0.52);
+  line-height: 1.35;
+  color: var(--muted);
+}
+.rule-note {
+  display: flex;
+  gap: 8px;
+}
+.rule-note + .rule-note {
+  margin-top: 3px;
+}
+.rule-mark {
+  flex-shrink: 0;
+  width: 1.1em;
+  text-align: center;
+  color: var(--faint);
+}
 /* a mini board per use, in the board's own hairlines, blue for you, red for them */
 .rule-boards {
-  grid-column: 3;
-  grid-row: 1 / 3;
+  flex-shrink: 0;
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 .rule-board {
   position: relative;

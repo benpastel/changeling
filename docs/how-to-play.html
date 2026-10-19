@@ -73,27 +73,12 @@
 
   @media (max-width: 900px) {
     .how .rules-list {
-      grid-template-columns: 1fr;
-      grid-template-rows: none !important;
-      grid-auto-flow: row;
+      columns: 1;
     }
   }
   @media (max-width: 560px) {
     .how {
       --sq: 22px;
-    }
-    .how .rule-name {
-      grid-column: 2 / -1;
-      grid-row: 1;
-    }
-    .how .rule-text {
-      grid-column: 2 / -1;
-      grid-row: 2;
-    }
-    .how .rule-boards {
-      grid-column: 2 / -1;
-      grid-row: 3;
-      margin-top: 10px;
     }
   }
 </style>

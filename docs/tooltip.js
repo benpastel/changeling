@@ -2,6 +2,7 @@
 
 // A tile or button that says what it is and does, the moment it's hovered: one tip,
 // above it (or below, without room), with a reminder that right-clicking opens more.
+// It's the reference in brief: each use's price and effects, then the notes.
 
 import {settings} from "./settings.js";
 
@@ -17,8 +18,8 @@ const RIGHT_CLICK =
 const GAP = 8;
 const MARGIN = 8;
 
-// `describe(target)` gives {element, name, lines} for whatever is under the pointer,
-// or null
+// `describe(target)` gives {element, name, uses, notes} for whatever is under the
+// pointer (see renderState.ruleOf), or null
 function setUpTooltips(describe) {
   const tip = document.createElement("div");
   tip.className = "tip";
@@ -46,10 +47,25 @@ function setUpTooltips(describe) {
     name.className = "tip-name";
     name.textContent = found.name;
     tip.append(name);
-    for (const line of found.lines) {
-      const text = document.createElement("div");
-      text.textContent = line;
-      tip.append(text);
+    found.uses.forEach((use, i) => {
+      use.lines.forEach((line, j) => {
+        const text = document.createElement("div");
+        // a second use is an alternative; a use's price leads its first line
+        if (j === 0 && i > 0) {
+          text.append(span("tip-or", "or "));
+        }
+        if (j === 0 && use.price) {
+          text.append(span(`tip-price ${use.price.kind}`, use.price.text), " ");
+        }
+        text.append(line);
+        tip.append(text);
+      });
+    });
+    for (const [mark, line] of found.notes) {
+      const note = document.createElement("div");
+      note.className = "tip-note";
+      note.append(span("tip-mark", mark), line);
+      tip.append(note);
     }
     const more = document.createElement("div");
     more.className = "tip-more";
@@ -63,6 +79,13 @@ function setUpTooltips(describe) {
     window.addEventListener(event, hide, true);
   }
   document.addEventListener("mouseleave", hide);
+}
+
+function span(className, text) {
+  const element = document.createElement("span");
+  element.className = className;
+  element.textContent = text;
+  return element;
 }
 
 function place(tip, rect) {

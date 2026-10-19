@@ -65,89 +65,57 @@ const ACTION_NAMES = {
   "✓": "ACCEPT",
   "🚩": "CHALLENGE",
 };
-// what each tile does, for the reference, one effect per line; the smite's cost varies
-// per game and is filled in where it's shown
-const DESCRIPTIONS = {
-  "🀥": ["move 1 in any direction", "gain $3"],
-  "🀨": ["move forward 1", "gain $4"],
-  "🀐": ["move up to 2", "gain $2", "reveal 1 unused tile"],
-  "🀒": ["kill an adjacent enemy for $1", "or an enemy 2 away for $5", "reflected by knives"],
-  "🀌": ["steal $4 from an adjacent enemy, swapping places with it", "reflected by thief"],
-  "🀙": ["pay $3 to shoot along a diagonal", "explodes 3×3 where it hits", "a direct hit is reflected by fireball"],
-  "🀇": ["pay $3 to kill the tile behind you", "reflected by backstabber", "or move 2 and gain $2"],
-  "🀛": ["pay $3 to roll a grenade exactly 2 squares", "along a clear straight line", "explodes 3×3 where it lands"],
-  "🀍": ["pull an enemy beside you, along a straight or diagonal line", "steal $2 from it", "reflected by hook"],
-  "🀎": ["pay $3 to move 1 straight", "knock every adjacent tile back 1", "any that can't move die"],
-  "🀩": ["move like a knight", "gain $1", "landing on an enemy swaps your identities", "then bumps it to a random adjacent square"],
-  "🀗": [
-    "move 2",
-    "leave webs behind",
-    "an enemy crossing a web loses a turn",
-    "webs block fireballs",
-    "fireballs and grenades clear webs",
-    "go again after an exchange",
-  ],
-  "↕": ["move 1", "gain $1"],
-  "⚡": ["on reaching the smite cost", "pay it to kill any enemy tile"],
-  "✓": ["the claimed ability goes ahead"],
-  "🚩": [
-    "the tile is revealed",
-    "if it has the ability: the challenger loses a tile, and the ability goes ahead",
-    "if not: the claimer loses a tile, and the ability is blocked",
-  ],
-};
-// a mini board for each, drawn from your side (forward is up); a tile with two uses
-// gets one board per use. Each square is a token:
+// mini boards for the reference, drawn from your side (forward is up).  Each square is
+// a token:
 //   .  empty           @  the acting tile        g  where it started (dashed)
 //   o  it can move here    x  it can hit an enemy here    E  an enemy tile
-//   1 5  knives' cost at that range    -  the fireball's flight
 //   ↖ ↑ ↗ ← → ↙ ↘  a tile pushed or pulled that way
-// with suffixes  *  inside an explosion   W  a web
-const DIAGRAMS = {
-  "↕": [[
+// with suffixes  *  inside an explosion   W  a web.  A board is its grid, or {grid,
+// arrows}, an arrow being [from row, from column, to row, to column].
+const BOARDS = {
+  step: [
     ". . . . .",
     ". o o o .",
     ". o @ o .",
     ". o o o .",
     ". . . . .",
-  ]],
-  "🀥": [[
-    ". . . . .",
-    ". o o o .",
-    ". o @ o .",
-    ". o o o .",
-    ". . . . .",
-  ]],
-  "🀨": [[
+  ],
+  forward: [
     ". . . . .",
     ". . o . .",
     ". . @ . .",
     ". . . . .",
     ". . . . .",
-  ]],
-  "🀐": [[
+  ],
+  two: [
     ". . o . .",
     ". o o o .",
     "o o @ o o",
     ". o o o .",
     ". . o . .",
-  ]],
-  "🀒": [[
-    ". . 5 . .",
-    ". 5 1 5 .",
-    "5 1 @ 1 5",
-    ". 5 1 5 .",
-    ". . 5 . .",
-  ]],
-  "🀌": [[
+  ],
+  adjacent: [
+    ". . . . .",
+    ". . x . .",
+    ". x @ x .",
+    ". . x . .",
+    ". . . . .",
+  ],
+  twoAway: [
+    ". . x . .",
+    ". x . x .",
+    "x . @ . x",
+    ". x . x .",
+    ". . x . .",
+  ],
+  around: [
     ". . . . .",
     ". x x x .",
     ". x @ x .",
     ". x x x .",
     ". . . . .",
-  ]],
-  // an arrow is [from row, from column, to row, to column]
-  "🀙": [{
+  ],
+  fireballHit: {
     grid: [
       ". . . . .",
       ". . * * *",
@@ -156,8 +124,9 @@ const DIAGRAMS = {
       ". @ . . .",
     ],
     arrows: [[4, 1, 2, 3]],
-  }, {
-    // with nothing in the way, it explodes at the edge
+  },
+  // with nothing in the way, it explodes at the edge
+  fireballEdge: {
     grid: [
       ". . . * *",
       ". . . * *",
@@ -166,28 +135,22 @@ const DIAGRAMS = {
       ". @ . . .",
     ],
     arrows: [[4, 1, 1, 4]],
-  }],
-  "🀇": [[
+  },
+  behind: [
     ". . . . .",
     ". . . . .",
     ". . @ . .",
     "x x x x x",
     "x x x x x",
-  ], [
-    ". . o . .",
-    ". o o o .",
-    "o o @ o o",
-    ". o o o .",
-    ". . o . .",
-  ]],
-  "🀛": [[
+  ],
+  grenade: [
     ". * * * .",
     ". * * E* .",
     "x . @ . x",
     ". . . . .",
     ". . x . .",
-  ]],
-  "🀍": [{
+  ],
+  hook: {
     grid: [
       ". . . . .",
       ". . . . .",
@@ -196,28 +159,137 @@ const DIAGRAMS = {
       ". . . . .",
     ],
     arrows: [[2, 2, 0, 0], [2, 2, 0, 2], [2, 2, 0, 4], [2, 2, 2, 0], [2, 2, 2, 4], [2, 2, 4, 0], [2, 2, 4, 2], [2, 2, 4, 4]],
-  }],
-  "🀎": [[
+  },
+  ram: [
     ". . . . .",
     ". ↖ ↑ ↗ .",
     ". ← @ → .",
     ". ↙ g ↘ .",
     ". . . . .",
-  ]],
-  "🀩": [[
-    ". o . E .",
+  ],
+  knight: [
+    ". o . o .",
     "o . . . o",
     ". . @ . .",
     "o . . . o",
     ". o . o .",
-  ]],
-  "🀗": [[
+  ],
+  swap: {
+    grid: [
+      ". . . E .",
+      ". . . . .",
+      ". . @ . .",
+      ". . . . .",
+      ". . . . .",
+    ],
+    arrows: [[2, 2, 0, 3]],
+  },
+  web: [
     ". . . . .",
     ". . @W . .",
     ". . W . .",
     ". . gW . .",
     ". . . . .",
-  ]],
+  ],
+};
+
+// what each tile, moving, smiting, and each answer to a claim does: its uses, and
+// notes on what isn't a use (reflects, webs, going again).  A use has a label, what
+// it costs or gains (the smite's cost is this game's: "smite"), its effects, a line
+// to each, and the boards that show it, captioned when there are several.  A note is
+// [mark, text].
+const REFLECTED = "↩";
+const REFERENCE = {
+  "🀥": {uses: [{label: "move", gain: 3, lines: ["move 1 in any direction"], boards: [BOARDS.step]}]},
+  "🀨": {uses: [{label: "move", gain: 4, lines: ["move forward 1"], boards: [BOARDS.forward]}]},
+  "🀐": {uses: [{label: "move", gain: 2, lines: ["move up to 2", "reveal 1 unused tile"], boards: [BOARDS.two]}]},
+  "🀒": {
+    uses: [
+      {label: "adjacent", cost: 1, lines: ["kill an adjacent enemy"], boards: [BOARDS.adjacent]},
+      {label: "2 away", cost: 5, lines: ["kill an enemy 2 away"], boards: [BOARDS.twoAway]},
+    ],
+    notes: [[REFLECTED, "reflected by knives"]],
+  },
+  "🀌": {
+    uses: [{label: "steal", gain: 4, lines: ["steal from an adjacent enemy", "swap places with it"], boards: [BOARDS.around]}],
+    notes: [[REFLECTED, "reflected by thief"]],
+  },
+  "🀙": {
+    uses: [{
+      label: "shoot",
+      cost: 3,
+      lines: ["shoot along a diagonal", "explode 3×3 on the first tile it meets", "or at the edge, if it meets none"],
+      boards: [BOARDS.fireballHit, BOARDS.fireballEdge],
+      captions: ["hits a tile", "or the edge"],
+    }],
+    notes: [[REFLECTED, "a direct hit is reflected by fireball"]],
+  },
+  "🀇": {
+    uses: [
+      {label: "kill", cost: 3, lines: ["kill an enemy anywhere behind you"], boards: [BOARDS.behind]},
+      {label: "move", gain: 2, lines: ["move up to 2"], boards: [BOARDS.two]},
+    ],
+    notes: [[REFLECTED, "a kill is reflected by backstabber"]],
+  },
+  "🀛": {
+    uses: [{
+      label: "throw",
+      cost: 3,
+      lines: ["roll a grenade exactly 2 squares, along a clear straight line", "explode 3×3 where it lands"],
+      boards: [BOARDS.grenade],
+    }],
+  },
+  "🀍": {
+    uses: [{
+      label: "pull",
+      gain: 2,
+      lines: ["pull an enemy beside you, along a straight or diagonal line", "steal from it"],
+      boards: [BOARDS.hook],
+    }],
+    notes: [[REFLECTED, "reflected by hook"]],
+  },
+  "🀎": {
+    uses: [{
+      label: "ram",
+      cost: 3,
+      lines: ["move 1 straight", "knock every adjacent tile back 1", "any that can't move die"],
+      boards: [BOARDS.ram],
+    }],
+  },
+  "🀩": {
+    uses: [
+      {label: "move", gain: 1, lines: ["move like a knight"], boards: [BOARDS.knight]},
+      {
+        label: "swap",
+        gain: 1,
+        lines: ["land on an enemy", "swap identities with it", "it's bumped to a random adjacent square"],
+        boards: [BOARDS.swap],
+      },
+    ],
+  },
+  "🀗": {
+    uses: [{label: "move", lines: ["move up to 2", "leave webs where you went"], boards: [BOARDS.web]}],
+    notes: [
+      ["▦", "an enemy crossing a web loses a turn"],
+      ["▦", "webs block fireballs; fireballs and grenades clear them"],
+      ["↻", "go again after an exchange"],
+    ],
+  },
+  "↕": {uses: [{label: "move", gain: 1, lines: ["move 1 in any direction"], boards: [BOARDS.step]}]},
+  "⚡": {
+    uses: [{label: "smite", cost: "smite", lines: ["kill any enemy tile"]}],
+    notes: [["⚡", "forced on reaching the smite cost"]],
+  },
+  "✓": {uses: [{lines: ["the claimed ability goes ahead"]}]},
+  "🚩": {
+    uses: [{
+      lines: [
+        "the tile is revealed",
+        "if it has the ability: the challenger loses a tile, and the ability goes ahead",
+        "if not: the claimer loses a tile, and the ability is blocked",
+      ],
+    }],
+  },
 };
 // must match python TILES_PER_GAME
 const TILES_PER_GAME = 5;
@@ -245,7 +317,6 @@ export {
   HIDDEN_TILE,
   ALL_TILES,
   ACTION_NAMES,
-  DESCRIPTIONS,
-  DIAGRAMS,
+  REFERENCE,
   TILES_PER_GAME,
 };
