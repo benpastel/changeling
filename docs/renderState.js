@@ -320,7 +320,7 @@ function renderOther(player_view) {
 // the smite's cost is this game's
 function ruleLines(glyph, player_view) {
   return glyph === "⚡"
-    ? [`on reaching $${player_view.smite_cost}, pay it to kill any enemy tile`]
+    ? [`on reaching $${player_view.smite_cost}`, "pay it to kill any enemy tile"]
     : DESCRIPTIONS[glyph];
 }
 
@@ -339,10 +339,11 @@ function renderRules(list, player_view, entries = [...player_view.tiles_in_game,
     const name = document.createElement("span");
     name.className = "rule-name";
     name.textContent = ACTION_NAMES[glyph];
-    const text = document.createElement("div");
+    // one bullet to an effect
+    const text = document.createElement("ul");
     text.className = "rule-text";
     for (const line of ruleLines(glyph, player_view)) {
-      const lineElement = document.createElement("div");
+      const lineElement = document.createElement("li");
       lineElement.textContent = line;
       text.append(lineElement);
     }

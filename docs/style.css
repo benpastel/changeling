@@ -1525,11 +1525,25 @@ the same place
   letter-spacing: 0.06em;
 }
 .rule-text {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   font-size: calc(var(--sq) * 0.56);
   line-height: 1.35;
 }
-.rule-text > div + div {
-  margin-top: 2px;
+/* a bullet to an effect, a wrapped line hanging under its text */
+.rule-text li {
+  position: relative;
+  padding-left: 0.95em;
+}
+.rule-text li + li {
+  margin-top: 3px;
+}
+.rule-text li::before {
+  content: "•";
+  position: absolute;
+  left: 0.15em;
+  color: var(--faint);
 }
 /* a mini board per use, in the board's own hairlines, blue for you, red for them */
 .rule-boards {
