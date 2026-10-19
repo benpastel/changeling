@@ -277,8 +277,7 @@ function renderWebs(board, player_view) {
 }
 
 function renderOther(player_view) {
-  // the lists layout of the left column (the tray is drawn by tray.js):
-  // each tile its own element, so a dying tile can fly to its place in the graveyard
+  // the left column: each tile its own element, so a dying tile can fly to its place in the graveyard
   for (const [selector, tiles] of [
     [".graveyard-contents", player_view.discard],
     [".unused-contents", player_view.unused_tiles],
@@ -288,6 +287,7 @@ function renderOther(player_view) {
     for (const tile of tiles) {
       const element = document.createElement("span");
       element.className = "acc-tile";
+      element.classList.toggle("back", tile === HIDDEN_TILE);
       element.textContent = tile;
       contents.append(element);
     }
@@ -313,10 +313,7 @@ function renderOther(player_view) {
     }
     unknown.append(column);
   }
-  // both layouts show the smite cost
-  for (const cost of document.querySelectorAll(".smite-cost .cost")) {
-    cost.textContent = `= $${player_view.smite_cost}`;
-  }
+  document.querySelector(".smite-cost .cost").textContent = `= $${player_view.smite_cost}`;
 }
 
 // what a tile, moving, smiting, or an answer to a claim does, a line to an effect;

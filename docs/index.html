@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tenor+Sans&display=swap">
     <link rel="stylesheet" href="style.css">
+    <!-- the theme before anything's drawn (see settings.js) -->
+    <script>try { document.documentElement.dataset.theme = localStorage.getItem("arena.theme") === "dark" ? "dark" : "light"; } catch {}</script>
   </head>
   <body class="at-lobby">
     <div class="lobby screen">
@@ -22,11 +24,10 @@
     </div>
     <div class="room screen"></div>
     <div class="container">
-      <!-- the left column, in one of two layouts (see style.css) -->
       <div class="sidebar lists">
         <div class="sidebar-top">
           <span class="area-label">piece info</span>
-          <div class="in-play" title="what each tile does"></div>
+          <div class="in-play"></div>
           <div class="smite-cost">
             <span class="option shell"><span class="symbol"><span>⚡</span></span></span>
             <span class="cost"></span>
@@ -37,20 +38,8 @@
           <div class="acc-row"><span class="acc-label">unused</span><span class="acc-tiles unused-contents"></span></div>
           <div class="acc-row"><span class="acc-label">unknown to you</span><span class="acc-tiles hidden-tiles-contents"></span></div>
         </div>
-        <div class="quit" title="quit">
+        <div class="quit">
           <span class="option shell"><span class="symbol"><span>✕</span></span></span>
-        </div>
-      </div>
-      <div class="sidebar tray-side">
-        <div class="quit" title="quit">
-          <span class="option shell"><span class="symbol"><span>✕</span></span></span>
-        </div>
-        <div class="tray-area">
-          <div class="tray"></div>
-          <div class="smite-cost">
-            <span class="option shell"><span class="symbol"><span>⚡</span></span></span>
-            <span class="cost"></span>
-          </div>
         </div>
       </div>
       <div class="strip top">
@@ -67,7 +56,6 @@
       <div class="side">
         <span class="area-label">history</span>
         <div class="log"></div>
-        <button class="layout-toggle"></button>
       </div>
     </div>
     <div class="rules" hidden>
@@ -86,6 +74,8 @@
         </div>
       </div>
     </div>
+    <button class="settings-button">settings</button>
+    <div class="settings" hidden></div>
     <div class="netbar" hidden></div>
     <div class="toast" hidden></div>
     <script src="main.js" type="module"></script>

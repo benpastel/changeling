@@ -10,7 +10,6 @@ import {
   HIDDEN_TILE,
   ALL_TILES,
   ACTION_NAMES,
-  DESCRIPTIONS,
   TILES_PER_GAME,
 } from "./constants.js";
 
@@ -145,7 +144,8 @@ function renderSet(table, actions) {
     entry.append(element("span", "set-glyph", tile));
     if (tile !== HIDDEN_TILE) {
       entry.append(element("span", "set-name", ACTION_NAMES[tile]));
-      entry.title = DESCRIPTIONS[tile].join("\n");
+      // described on hover (see tooltip.js)
+      entry.dataset.tile = tile;
     }
     set.append(entry);
   }
@@ -164,7 +164,7 @@ function renderPicker(table, actions) {
       const tiles = chosen ? table.tiles.filter((t) => t !== tile) : [...table.tiles, tile];
       actions.setTiles("custom", tiles);
     }, full && !chosen);
-    glyph.title = DESCRIPTIONS[tile].join("\n");
+    pick.dataset.tile = tile;
     pick.append(glyph, element("span", "pick-name", name));
     picker.append(pick);
   }

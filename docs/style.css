@@ -24,10 +24,49 @@
 
   /* a tile that can be clicked is drawn bolder; a picked one is also underlined */
   --bold: 0.022em;
+
+  /* the page, and what sits on it: panels, buttons, and the faces of tiles drawn as
+     buttons; text and marks on a strong (ink or blue) background; the faded page
+     behind a modal; grey tiles (lost, unused, unknown, on an exchange) */
+  --bg: white;
+  --surface: white;
+  --hover: #f4f4f4;
+  --on-strong: white;
+  --primary-hover: #1a4399;
+  --scrim: rgba(255, 255, 255, 0.82);
+  --shadow: rgba(0, 0, 0, 0.12);
+  --dim-tile: #555555;
+  --back: #555555;
+  color-scheme: light;
+}
+
+/* dark: the same page by night.  The tiles keep their faces a shade above the page,
+   so they still read as tiles; blue and red are lifted to keep their contrast */
+:root[data-theme="dark"] {
+  --you: #7ea6ff;
+  --them: #ff7b72;
+  --ink: #e6e4df;
+  --muted: #a4a4a4;
+  --faint: #6f737a;
+  --line: #30343b;
+  --frame: #8a8f98;
+  --wash: #1b2541;
+  --wash-them: #3b1f20;
+  --bg: #131518;
+  --surface: #1c1f24;
+  --hover: #272b32;
+  --on-strong: #131518;
+  --primary-hover: #a7c0ff;
+  --scrim: rgba(19, 21, 24, 0.85);
+  --shadow: rgba(0, 0, 0, 0.55);
+  --dim-tile: #9da1a8;
+  /* face-down grey tiles are solid, so they're kept quieter than the outlined ones */
+  --back: #4b5059;
+  color-scheme: dark;
 }
 
 body {
-  background-color: white;
+  background-color: var(--bg);
   color: var(--ink);
   margin: 0;
   font-family: var(--text-font);
@@ -95,29 +134,29 @@ the tiles between.
   text-transform: uppercase;
   white-space: nowrap;
   color: inherit;
-  background: white;
+  background: var(--surface);
   border: 1px solid currentColor;
   cursor: pointer;
 }
 .btn:hover {
-  background-color: #f4f4f4;
+  background-color: var(--hover);
 }
 .btn.primary {
-  color: white;
+  color: var(--on-strong);
   background-color: var(--you);
   border-color: var(--you);
 }
 .btn.primary:hover {
-  background-color: #1a4399;
+  background-color: var(--primary-hover);
 }
 .btn:disabled {
   color: var(--faint);
   border-color: var(--line);
-  background: white;
+  background: var(--surface);
   cursor: default;
 }
 .btn.primary:disabled {
-  color: white;
+  color: var(--on-strong);
   background-color: var(--line);
 }
 .btn.small {
@@ -315,7 +354,7 @@ the tiles between.
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink);
-  background: white;
+  background: var(--surface);
   border: none;
   border-left: 1px solid var(--ink);
   cursor: pointer;
@@ -324,7 +363,7 @@ the tiles between.
   border-left: none;
 }
 .segmented button.on {
-  color: white;
+  color: var(--on-strong);
   background-color: var(--ink);
 }
 .segmented button:disabled {
@@ -437,8 +476,8 @@ the tiles between.
   left: 0;
   right: 0;
   text-align: center;
-  background-color: black;
-  color: white;
+  background-color: var(--ink);
+  color: var(--on-strong);
   padding: 6px;
   z-index: 10;
 }
@@ -488,19 +527,12 @@ board is sized relative to it (cqmin), so the layout holds at any laptop size.
 
   font-family: var(--text-font);
   color: var(--ink);
-  background-color: white;
+  background-color: var(--bg);
   cursor: default;
 }
 
 /* ------------------------------------------------------------------- left */
-/* Two layouts of the left column, switched from the bottom-right corner (see main.js):
-   the lists (the tiles in play and the smite cost, then the graveyard, the unused
-   tiles, and the unknown ones) and the tray (every tile, marked with what we know). */
-.container:not(.tray-layout) .sidebar.tray-side,
-.container.tray-layout .sidebar.lists {
-  display: none;
-}
-/* a tile that's left the board, on its way to the graveyard, the tray, or an exchange */
+/* a tile that's left the board, on its way to the graveyard or an exchange */
 .ghost {
   position: fixed;
   z-index: 10;
@@ -603,7 +635,12 @@ board is sized relative to it (cqmin), so the layout holds at any laptop size.
 .sidebar.lists .acc-tiles {
   font-size: 28px;
   line-height: 1;
-  color: #555555;
+  color: var(--dim-tile);
+}
+/* face down: unused, or on an exchange */
+.sidebar.lists .acc-tile.back,
+.cell-marks [data-tile-name="🀫"] {
+  color: var(--back);
 }
 /* the copies of a tile we haven't seen, stacked under it, drawn like the tiles in play */
 .sidebar.lists .hidden-tiles-contents {
@@ -639,143 +676,6 @@ board is sized relative to it (cqmin), so the layout holds at any laptop size.
 }
 .sidebar.lists .quit .option.shell::before {
   border-width: var(--frame-width, 0.02em);
-}
-
-/* ----------------------------------------------------------- left: tray */
-/* quitting above, the tray beside the board, and the smite cost below; each row of the tray, and the smite cost, opens what it does */
-.sidebar.tray-side {
-  grid-column: 1;
-  grid-row: 1 / 4;
-  min-height: 0;
-  display: grid;
-  grid-template-rows: subgrid;
-  border-right: 1px solid var(--line);
-}
-.sidebar.tray-side .quit {
-  grid-row: 1;
-  /* tucked into the corner, as far from the top as from the side */
-  align-self: start;
-  justify-self: start;
-  margin: 18px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-.sidebar.tray-side .quit .option {
-  font-size: 36px;
-  -webkit-text-stroke: 0;
-}
-.sidebar.tray-side .quit .option.shell::before {
-  border-width: var(--frame-width, 0.02em);
-}
-/* the tray's rows sit close together from the board's top edge, the smite cost
-   under them */
-.sidebar.tray-side .tray-area {
-  grid-row: 2;
-  display: flex;
-  flex-direction: column;
-  padding-top: 8px;
-}
-.sidebar.tray-side .tray {
-  display: grid;
-  row-gap: 4px;
-  /* its tiles are sized to its width (the sidebar can't be the container: containing
-     its layout would stop it sharing the page's rows) */
-  container-type: inline-size;
-}
-.sidebar.tray-side .tray-row {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 4px 18px;
-  cursor: pointer;
-}
-.sidebar.tray-side .tray-copies {
-  display: flex;
-  gap: 6px;
-  /* as big as a fifth of the board allows with the name under them, unless three
-     must fit a narrow column */
-  font-size: min(calc(var(--board) / 5 * 0.68), calc((100cqi - 48px) / 3 / 0.8));
-  line-height: 1;
-}
-.sidebar.tray-side .tray-name {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-.sidebar.tray-side .tray-row:hover,
-.sidebar.tray-side .smite-cost:hover {
-  background-color: #f2f2f2;
-}
-.sidebar.tray-side .tray-copy {
-  position: relative;
-  font-family: var(--tile-font);
-  /* drawn faded (see .tray-glyph), this is the pale grey of an unknown copy */
-  color: #7c7c7c;
-}
-.sidebar.tray-side .tray-copy.you,
-.sidebar.tray-side .tray-copy.you-dead {
-  color: var(--you);
-}
-.sidebar.tray-side .tray-copy.them,
-.sidebar.tray-side .tray-copy.them-dead {
-  color: var(--them);
-}
-.sidebar.tray-side .tray-copy.unused,
-.sidebar.tray-side .tray-copy.exchange {
-  color: #555555;
-}
-/* every copy faded, so the tray stays quieter than the board */
-.sidebar.tray-side .tray-glyph {
-  opacity: 0.45;
-}
-/* the exchange's mark, in the corner of an exchange's tiles and of a tray copy known
-   to be on one */
-.exchange-mark {
-  position: absolute;
-  right: -0.1em;
-  bottom: -0.06em;
-  width: 0.4em;
-  height: 0.4em;
-  pointer-events: none;
-}
-.exchange-mark svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-/* a tombstone or magnifying glass, tucked into the tile's corner */
-.sidebar.tray-side .tray-mark {
-  position: absolute;
-  right: -0.08em;
-  bottom: -0.04em;
-  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-  font-size: 0.36em;
-  line-height: 1;
-}
-.sidebar.tray-side .smite-cost {
-  padding: 10px 18px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: calc(var(--strip) * 0.19);
-  cursor: pointer;
-}
-.sidebar.tray-side .smite-cost .option {
-  font-size: calc(var(--strip) * 0.28);
-  -webkit-text-stroke: 0;
-}
-.sidebar.tray-side .smite-cost .option.shell::before {
-  border-width: var(--frame-width, 0.02em);
-}
-/* a narrow column keeps its edges narrow too */
-@container (max-width: 200px) {
-.sidebar.tray-side .tray-row {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
 }
 
 /* ----------------------------------------------------------------- strips */
@@ -849,7 +749,7 @@ board is sized relative to it (cqmin), so the layout holds at any laptop size.
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
-  background-color: white;
+  background-color: var(--surface);
 }
 .timed .clock {
   display: flex;
@@ -932,7 +832,7 @@ board is sized relative to it (cqmin), so the layout holds at any laptop size.
   grid-template-rows: repeat(5, 1fr);
 
   border: var(--frame-width) solid var(--frame);
-  background-color: white;
+  background-color: var(--bg);
 }
 .cell {
   position: relative;
@@ -1007,7 +907,7 @@ exchange's two tiles side by side
   gap: 0.5cqmin;
   line-height: 1;
   pointer-events: none;
-  color: #555555;
+  color: var(--dim-tile);
 }
 .cell-marks .board-tile {
   position: relative;
@@ -1075,7 +975,7 @@ selection; colour only ever says whose piece it is
 }
 /* white under the cross, so it reads over the tile it lands on */
 .claim-line .claim-halo {
-  stroke: white;
+  stroke: var(--bg);
   stroke-width: 2cqmin;
 }
 /* the claimed ability (and any reflect, and the answers) written beside the line */
@@ -1152,7 +1052,7 @@ the same place
   width: var(--face-width);
   height: var(--face-height);
   border-radius: var(--face-radius);
-  background-color: white;
+  background-color: var(--surface);
 }
 /* the frame matches a bolded tile's: the font's frame plus the stroke on both edges */
 .option.shell::before {
@@ -1190,10 +1090,10 @@ the same place
   flex-direction: column;
   align-items: center;
   gap: 1.6cqmin;
-  background-color: white;
+  background-color: var(--surface);
   border: 1.5px solid var(--frame);
   border-radius: 8px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 24px var(--shadow);
 }
 /* what's being asked, no wider than the board allows */
 .choice-prompt {
@@ -1225,7 +1125,7 @@ the same place
   position: absolute;
   width: 14px;
   height: 14px;
-  background-color: white;
+  background-color: var(--surface);
   border: 1.5px solid var(--frame);
   border-top: 0;
   border-left: 0;
@@ -1234,6 +1134,132 @@ the same place
 .choice-panel.below::after { left: calc(var(--point) - 8px); top: -9px; transform: rotate(225deg); }
 .choice-panel.right::after { top: calc(var(--point) - 8px); left: -9px; transform: rotate(135deg); }
 .choice-panel.left::after { top: calc(var(--point) - 8px); right: -9px; transform: rotate(-45deg); }
+
+/* -------------------------------------------------------------- settings */
+/* kept out of the way in the bottom-right corner, on every screen */
+.settings-button {
+  position: fixed;
+  right: 12px;
+  bottom: 8px;
+  z-index: 15;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.settings-button:hover {
+  color: var(--ink);
+}
+/* opens above the button */
+.settings {
+  position: fixed;
+  right: 12px;
+  bottom: 32px;
+  z-index: 40;
+  min-width: 190px;
+  box-sizing: border-box;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background-color: var(--surface);
+  border: 1.5px solid var(--frame);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px var(--shadow);
+}
+.settings[hidden] {
+  display: none;
+}
+.setting {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.setting input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+/* a switch: its knob slides right, and the track fills blue, when on */
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 34px;
+  height: 20px;
+  border-radius: 10px;
+  background-color: var(--line);
+  transition: background-color 150ms;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: var(--bg);
+  box-shadow: 0 1px 2px var(--shadow);
+  transition: transform 150ms;
+}
+.setting input:checked + .switch {
+  background-color: var(--you);
+}
+.setting input:checked + .switch::after {
+  transform: translateX(14px);
+}
+.setting input:focus-visible + .switch {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}
+
+/* what a tile or button is and does, shown the moment it's hovered (see tooltip.js) */
+.tip {
+  position: fixed;
+  z-index: 50;
+  max-width: 260px;
+  box-sizing: border-box;
+  padding: 8px 11px 7px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ink);
+  background-color: var(--surface);
+  border: 1px solid var(--frame);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px var(--shadow);
+  pointer-events: none;
+}
+.tip[hidden] {
+  display: none;
+}
+.tip-name {
+  margin-bottom: 2px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tip-more {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--faint);
+}
+.tip-more svg {
+  width: 9px;
+  height: 12px;
+}
 
 /* ------------------------------------------------------------------- log */
 .side {
@@ -1249,28 +1275,12 @@ the same place
 .side > .area-label {
   padding: 12px 5cqi 0;
 }
-/* switches the left column's layout; kept out of the way in the corner */
-.layout-toggle {
-  flex-shrink: 0;
-  align-self: flex-end;
-  margin: 6px 12px 8px;
-  padding: 0;
-  font: inherit;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--faint);
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-.layout-toggle:hover {
-  color: var(--ink);
-}
 .log {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 6px 0;
+  /* room at the bottom for the settings button in the corner */
+  padding: 6px 0 28px;
   /* the log is sized to its own width (cqi), so a row keeps to one line at any size */
   container-type: inline-size;
   cursor: text;
@@ -1374,7 +1384,7 @@ the same place
   position: fixed;
   inset: 0;
   z-index: 20;
-  background-color: rgba(255, 255, 255, 0.82);
+  background-color: var(--scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1391,11 +1401,11 @@ the same place
   --sq: clamp(16px, 3.2vh, 30px);
   padding: max(5vh, 48px) 4vw 3vh;
   box-sizing: border-box;
-  background-color: white;
-  border: 1.5px solid #6b6b6b;
+  background-color: var(--surface);
+  border: 1.5px solid var(--frame);
   border-radius: 8px;
   font-family: var(--text-font);
-  color: #141414;
+  color: var(--ink);
 }
 .rules-close {
   position: absolute;
@@ -1409,7 +1419,7 @@ the same place
   position: fixed;
   inset: 0;
   z-index: 20;
-  background-color: rgba(255, 255, 255, 0.82);
+  background-color: var(--scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1425,7 +1435,7 @@ the same place
   flex-direction: column;
   align-items: center;
   gap: 26px;
-  background-color: white;
+  background-color: var(--surface);
   border: 1.5px solid var(--frame);
   border-radius: 8px;
   text-align: center;
@@ -1521,16 +1531,12 @@ the same place
 .rule-text > div + div {
   margin-top: 2px;
 }
-/* a mini board per use, in the board's own hairlines, jade for you, cinnabar for them */
+/* a mini board per use, in the board's own hairlines, blue for you, red for them */
 .rule-boards {
   grid-column: 3;
   grid-row: 1 / 3;
   display: flex;
   gap: 10px;
-  --you: #1f4fb4;
-  --them: #c4302b;
-  --line: #d4d4d4;
-  --frame: #6b6b6b;
 }
 .rule-board {
   position: relative;

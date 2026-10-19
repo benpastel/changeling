@@ -20,7 +20,8 @@ import {renderChoice} from "./renderChoice.js";
 
 import {snapshot, animate} from "./animate.js";
 import {confetti} from "./confetti.js";
-import {renderTray} from "./tray.js";
+import {setUpSettings} from "./settings.js";
+import {setUpTooltips} from "./tooltip.js";
 
 import {highlightSquares} from "./renderHighlights.js";
 
@@ -38,8 +39,6 @@ let CHOICE_ID = 0;
 // remembered across visits, so a refresh puts you back in your seat
 const ID_KEY = "arena.playerId";
 const NAME_KEY = "arena.name";
-// which layout of the left column this browser last chose: "tray", or the lists
-const LAYOUT_KEY = "arena.layout";
 
 function load(key) {
   try {
@@ -89,7 +88,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const bottomStrip = container.querySelector(".strip.bottom");
   const log = document.querySelector(".log");
   const rules = document.querySelector(".rules");
-  const tray = document.querySelector(".tray");
 
   // the board and strips are drawn from our side: ours at the bottom, theirs at the top
   let orientation = null;
@@ -135,7 +133,6 @@ window.addEventListener("DOMContentLoaded", () => {
     renderWebs(board, player_view);
     renderHand(player_view);
     renderOther(player_view);
-    renderTray(tray, player_view, orientation);
     redrawSelection();
     animate(before, board, player_view);
   }
@@ -225,11 +222,7 @@ window.addEventListener("DOMContentLoaded", () => {
     setBotLevel: (level) => net.send({type: "setBotLevel", level}),
     start: () => net.send({type: "start"}),
     // before a game, the reference shows whichever tiles were clicked
-    showRules: (entries) => {
-      // must match python DEFAULT_SMITE_COST; random tables vary it, but show no smite
-      renderRules(rules.querySelector(".rules-list"), {smite_cost: 10}, entries);
-      openRules();
-    },
+    showRules: (entries) => showRules(entries),
   };
 
   function maybeJoin() {
@@ -254,27 +247,24 @@ window.addEventListener("DOMContentLoaded", () => {
   // the reference for the tiles in play: one click opens it over most of the screen
   const openRules = () => { rules.hidden = false; };
   const closeRules = () => { rules.hidden = true; };
-  // in the lists layout, the tiles in play open what every tile does; in the tray, a
-  // row, or the smite cost, opens what it does
+  // the game's own smite cost, or before a game the default (must match python
+  // DEFAULT_SMITE_COST; random tables vary it)
+  const viewed = () => lastView ?? {smite_cost: 10};
+  // `entries` defaults to every tile in play
   const showRules = (entries) => {
-    if (lastView) {
-      renderRules(rules.querySelector(".rules-list"), lastView, entries);
-      openRules();
-    }
+    renderRules(rules.querySelector(".rules-list"), viewed(), entries);
+    openRules();
   };
+  // the tiles in play open what every tile does
   document.querySelector(".in-play").addEventListener("click", () => showRules(undefined));
-  tray.addEventListener("click", ({ target }) => {
-    const row = target.closest(".tray-row");
-    if (row) {
-      showRules([row.dataset.tile]);
-    }
-  });
-  document.querySelector(".tray-side .smite-cost").addEventListener("click", () => showRules(["⚡"]));
 
-  // any tile or button in the game says what it is and does when hovered, and opens
-  // its own reference when right-clicked
+  // any tile or button, in the game or before it, says what it is and does when
+  // hovered, and opens its own reference when right-clicked; not inside the reference
   const describedAt = (target) => {
-    for (let element = target; element && element !== container; element = element.parentElement) {
+    if (target.closest?.(".rules")) {
+      return null;
+    }
+    for (let element = target; element && element !== document.body; element = element.parentElement) {
       const {name, tileName, tile} = element.dataset;
       const glyph = name ?? tileName ?? tile ?? (element.children.length === 0 ? element.textContent.trim() : "");
       if (glyph in DESCRIPTIONS) {
@@ -283,30 +273,19 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     return null;
   };
-  container.addEventListener("mouseover", ({ target }) => {
-    const found = lastView && describedAt(target);
-    if (found) {
-      found.element.title = [ACTION_NAMES[found.glyph], ...ruleLines(found.glyph, lastView)].join("\n");
-    }
+  setUpTooltips((target) => {
+    const found = describedAt(target);
+    return found && {element: found.element, name: ACTION_NAMES[found.glyph], lines: ruleLines(found.glyph, viewed())};
   });
-  container.addEventListener("contextmenu", (event) => {
-    const found = lastView && describedAt(event.target);
+  document.addEventListener("contextmenu", (event) => {
+    const found = describedAt(event.target);
     if (found) {
       event.preventDefault();
       showRules([found.glyph]);
     }
   });
 
-  // the left column's layout, switched from the corner and remembered
-  const layoutToggle = document.querySelector(".layout-toggle");
-  function setLayout(tray) {
-    container.classList.toggle("tray-layout", tray);
-    layoutToggle.textContent = tray ? "lists" : "tray";
-    layoutToggle.title = tray ? "show the graveyard, unused, and unknown lists" : "show every tile in a tray";
-    save(LAYOUT_KEY, tray ? "tray" : "lists");
-  }
-  setLayout(load(LAYOUT_KEY) === "tray");
-  layoutToggle.addEventListener("click", () => setLayout(!container.classList.contains("tray-layout")));
+  setUpSettings(document.querySelector(".settings-button"), document.querySelector(".settings"));
   rules.querySelector(".rules-close").addEventListener("click", closeRules);
   rules.addEventListener("click", ({ target }) => {
     if (target === rules) {
@@ -360,8 +339,10 @@ window.addEventListener("DOMContentLoaded", () => {
     result.querySelector(".result-table").replaceChildren(head, body);
 
     if (!shown && outcome.winner) {
-      const color = outcome.winner === me ? "#1f4fb4" : "#c4302b";
-      confetti([color, color, "#141414", "#9a9a9a"]);
+      // in the winner's colour, and the page's ink, in whichever theme
+      const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      const color = token(outcome.winner === me ? "--you" : "--them");
+      confetti([color, color, token("--ink"), token("--faint")]);
     }
   }
   const answerResult = (data) => {

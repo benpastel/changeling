@@ -1,11 +1,11 @@
 // Animates the change from one state to the next, so it's easier to see what happened:
 //   - a piece slides to its new square
-//   - a dying tile flies to its place in the graveyard, or the tray, and a tile placed
+//   - a dying tile flies to its place in the graveyard, and a tile placed
 //     from a hand flies onto the board, the rest of the hand closing up behind it
 //   - an exchange swaps the tile with the one it takes, then shuffles its stack
 //   - a tile that's revealed, or hidden again, turns over: on the board, on an
 //     exchange, and everything at the end of the game; an unused tile seen with the
-//     bonus turns over in the unused list, or gets its magnifying glass in the tray
+//     bonus turns over in the unused list
 //   - money gained or spent floats up from the player's amount
 //   - webs fade in and out
 //
@@ -20,7 +20,7 @@ import {findCell} from "./renderState.js";
 
 // pieces slide at one speed however far they go: a step, a hook's pull, a ram's knockback
 const SLIDE_MS_PER_SQUARE = 220;
-// tiles flying on and off the board (to the tray, from a hand, to and from an
+// tiles flying on and off the board (to the graveyard, from a hand, to and from an
 // exchange) go at one speed too, for now the slides', and however short the hop, take
 // as long as two squares, so a tile placed from a hand next to it is still seen to
 // arrive; a dying tile first pauses where it died
@@ -124,28 +124,14 @@ function animate(before, board, view) {
     }
   }
 
-  if (trayLayout()) {
-    // each of the dead flies to a copy of theirs that's just died in the tray
-    const graves = Array.from(document.querySelectorAll(".tray-copy[data-fresh$='-dead']"));
-    for (const [player, from] of deaths) {
-      const known = (copy) => from && (from.glyph === HIDDEN_TILE || copy.dataset.tile === from.glyph);
-      const index = graves.findIndex((copy) => copy.dataset.owner === player && known(copy));
-      const grave = index >= 0 ? graves.splice(index, 1)[0] : null;
-      if (from) {
-        ghostToGrave(from, grave, square);
-      }
+  // the dead are the newest tiles in the graveyard
+  const graves = Array.from(document.querySelectorAll(".graveyard-contents .acc-tile"));
+  const newGraves = graves.slice(was.discard.length);
+  deaths.forEach(([, from], i) => {
+    if (from) {
+      ghostToGrave(from, newGraves[i], square);
     }
-    popMarks();
-  } else {
-    // the dead are the newest tiles in the graveyard
-    const graves = Array.from(document.querySelectorAll(".graveyard-contents .acc-tile"));
-    const newGraves = graves.slice(was.discard.length);
-    deaths.forEach(([, from], i) => {
-      if (from) {
-        ghostToGrave(from, newGraves[i], square);
-      }
-    });
-  }
+  });
 
   // a placed tile leaves as any tile it replaces does, and the hand closes up behind it
   const delay = deaths.length ? PAUSE_MS : 0;
@@ -276,8 +262,8 @@ function ghostToGrave(from, grave, square) {
   const duration = grave
     ? travel(from.rect, grave.getBoundingClientRect(), square, FLY_MS_PER_SQUARE, FLY_MIN_SQUARES)
     : FLY_MS_PER_SQUARE * FLY_MIN_SQUARES;
-  // the graveyard and the tray show the tile's face, which the board may not have
-  ghost(grave ? grave.dataset.tile || grave.textContent : from.glyph, from, grave, duration, PAUSE_MS);
+  // the graveyard shows the tile's face, which the board may not have
+  ghost(grave ? grave.textContent : from.glyph, from, grave, duration, PAUSE_MS);
 }
 
 // the tiles left in a hand slide over to where they're now drawn
@@ -408,34 +394,14 @@ function flipChanged(board, was, view, kept, swapped, sliding) {
     });
   });
 
-  // in the lists layout, an unused tile seen with the bonus
-  if (!trayLayout()) {
-    document.querySelectorAll(".unused-contents .acc-tile").forEach((tile, i) => {
-      const from = was.unused_tiles[i];
-      const to = view.unused_tiles[i];
-      if (from && hidden(from) !== hidden(to)) {
-        flip(tile, from, to);
-      }
-    });
-  }
-}
-
-function trayLayout() {
-  return document.querySelector(".container").classList.contains("tray-layout");
-}
-
-// an unused tile just seen with the bonus gets its magnifying glass with a little pop
-function popMarks() {
-  for (const copy of document.querySelectorAll(".tray-copy[data-fresh='unused']")) {
-    copy.querySelector(".tray-mark")?.animate(
-      [
-        {transform: "scale(0)"},
-        {transform: "scale(1.3)", offset: 0.6},
-        {transform: "scale(1)"},
-      ],
-      {duration: FLIP_MS, easing: "ease-out"},
-    );
-  }
+  // an unused tile seen with the bonus
+  document.querySelectorAll(".unused-contents .acc-tile").forEach((tile, i) => {
+    const from = was.unused_tiles[i];
+    const to = view.unused_tiles[i];
+    if (from && hidden(from) !== hidden(to)) {
+      flip(tile, from, to);
+    }
+  });
 }
 
 // show `glyph` on a tile, keeping any mark drawn on it (an exchange's)
