@@ -324,16 +324,12 @@ const REFERENCE = {
     uses: [{
       label: "freeze",
       cost: 3,
-      lines: ["kill every tile 2 away, yours too", "ice those squares"],
+      lines: ["kill ring 2 away", "creates ice"],
       boards: [BOARDS.freeze],
     }, {
       label: "ice",
       then: true,
-      lines: [
-        "a tile moving onto ice slides on the same way",
-        "until it's off the ice, or the next square is taken or off the board",
-        "fireballs and grenades melt it",
-      ],
+      lines: ["moves slide in straight line until obstruction", "melted by fireball & grenade"],
       boards: [BOARDS.slide, BOARDS.slideBlocked],
       captions: ["off the ice", "or blocked"],
     }],
@@ -342,7 +338,7 @@ const REFERENCE = {
     uses: [{
       label: "shine",
       cost: 1,
-      lines: ["reveal tiles in a straight line"],
+      lines: ["reveal tiles in straight line"],
       boards: [BOARDS.beam],
     }],
     notes: [[REFLECTED, "reflected by sunbeam"]],
@@ -360,12 +356,7 @@ const REFERENCE = {
   },
   [ICE]: {
     uses: [{
-      lines: [
-        "left by frost",
-        "a tile moving onto it slides on the same way",
-        "until it's off the ice, or the next square is taken or off the board",
-        "fireballs and grenades melt it",
-      ],
+      lines: ["moves slide in straight line until obstruction", "melted by fireball & grenade"],
       boards: [BOARDS.slide, BOARDS.slideBlocked],
       captions: ["off the ice", "or blocked"],
     }],

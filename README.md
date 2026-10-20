@@ -21,8 +21,8 @@ Each game uses 5 types of tiles, with 3 copies each.  The tile abilities are:
  - 🀙 FIREBALL: pay $3 to shoot a fireball along a straight or diagonal line, exploding 3x3 at impact. Direct hits reflected by FIREBALL.
  - 🀎 RAM: pay $3, move 1 cardinal direction, then knockback all adjacent tiles.  They die if they can't move.
  - 🀗 SPIDER: move 2, leaving webs where you went, then go again (at most two moves a turn).  An enemy crossing a web loses their next turn, and the web holds them until then; webs block fireballs, and fireballs and grenades clear them.
- - 🀩 FROST (experimental): pay $3 to kill every tile 2 squares away (the edge of the 5x5 square around it), your own too, and ice those squares.  A tile moving onto ice, for any reason, slides on the same way until it's off the ice or the next square is taken or off the board.  Fireballs and grenades melt ice (it doesn't block them).
- - 🀧 SUNBEAM (experimental): pay $1 to shine a beam straight up, down, left, or right to the edge, revealing every tile it crosses.  Reflected by 🀧 SUNBEAM, but only by the first tile it reaches.
+ - 🀩 FROST (experimental): pay $3 to kill the ring 2 away (yours too), creating ice.  Moves onto ice slide in a straight line until an obstruction.  Ice is melted by fireball & grenade.
+ - 🀧 SUNBEAM (experimental): pay $1 to reveal tiles in a straight line.  Reflected by 🀧 SUNBEAM.
 
 After each action, opponents can:
  - ✓ ACCEPT: allow the claimed ability to proceed
