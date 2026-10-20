@@ -37,6 +37,10 @@ from server.notify import (
 )
 
 
+# at most, however many spiders a player claims: one move, and one more
+MOVES_PER_TURN = 2
+
+
 async def _resolve_bonus(
     state: State,
     players: dict[Player, Agent],
@@ -171,20 +175,20 @@ async def _check_web(
 ) -> None:
     """
     If the player moved onto an enemy web, they'll skip their next turn.  Doesn't stack.
+    The webs hold them until then, and go when they've sat it out.
     """
     already_skipping = state.skip_next_turn[moving_player]
 
     enemy_webs = state.webs[other_player(moving_player)]
 
     # if any of the squares on the path are enemy webs, the player skips their next turn
-    # also clears any webs they stepped on
     for square in path(start, target):
-        if square in enemy_webs:
+        if square in enemy_webs and square not in state.caught[moving_player]:
             state.skip_next_turn[moving_player] = True
-            enemy_webs.remove(square)
+            state.caught[moving_player].append(square)
 
     if state.skip_next_turn[moving_player] and not already_skipping:
-        state.log(LogKind.WEB, moving_player)
+        state.log(LogKind.WEB, moving_player, piece=state.piece_at(target))
 
 
 async def _resolve_action(
@@ -248,10 +252,8 @@ async def _resolve_action(
         await _check_special_square(to_square, state, players)
         await _check_web(from_square, to_square, state, moving_player=player)
 
-    # spider goes again after exchange
-    if action == Tile.SPIDER and any(
-        to_square in state.exchange_positions for _, _, to_square in moved
-    ):
+    # spider goes again (see MOVES_PER_TURN)
+    if action == Tile.SPIDER:
         state.go_again = True
 
 
@@ -651,7 +653,22 @@ async def _play_one_turn(state: State, players: dict[Player, Agent]) -> None:
     state.new_log_turn(state.current_player)
 
     if state.skip_next_turn[state.current_player]:
-        state.log(LogKind.SKIP, state.current_player)
+        # the piece that was caught, if it's still there, and the webs that caught it
+        # go now
+        pieces = [
+            e.piece
+            for turn in state.public_log
+            for e in turn.events
+            if e.kind == LogKind.WEB and e.player == state.current_player
+        ]
+        state.log(
+            LogKind.SKIP, state.current_player, piece=pieces[-1] if pieces else None
+        )
+        enemy_webs = state.webs[state.other_player]
+        for square in state.caught[state.current_player]:
+            if square in enemy_webs:
+                enemy_webs.remove(square)
+        state.caught[state.current_player] = []
         state.skip_next_turn[state.current_player] = False
         await broadcast_state_changed(state, players)
         return
@@ -663,11 +680,13 @@ async def _play_one_turn(state: State, players: dict[Player, Agent]) -> None:
     # the bonus may push the current player's coins above the smite cost
     await _maybe_smite(state, players)
 
-    # spider on exchange may allow the current player to go again
-    # in which case we repeat the whole turn, except for the bonus
+    # a spider lets the current player go again, in which case we repeat the whole
+    # turn, except for the bonus
+    moves = 0
     state.go_again = True
     while state.go_again:
         state.go_again = False
+        moves += 1
 
         # a smite may already have decided the game, leaving a player with no tiles to move
         if state.game_result() != GameResult.ONGOING:
@@ -790,6 +809,8 @@ async def _play_one_turn(state: State, players: dict[Player, Agent]) -> None:
         # or the opponent's, if an action was reflected
         await _maybe_smite(state, players)
 
+        if moves >= MOVES_PER_TURN:
+            state.go_again = False
         if state.go_again:
             state.log(LogKind.AGAIN, state.current_player)
 

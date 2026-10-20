@@ -1029,6 +1029,44 @@ selection; colour only ever says whose piece it is
 .claim-line.ghost-move {
   opacity: 0.4;
 }
+/* a turn lost to a web: a timer runs down over the tile that was caught */
+.caught-timer {
+  position: absolute;
+  width: 11cqmin;
+  height: 11cqmin;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: caught-timer 1.8s ease-in-out forwards;
+}
+.caught-timer svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.caught-face {
+  fill: var(--surface);
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+/* a wedge of the face, swept away clockwise from twelve o'clock */
+.caught-sweep {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 17;
+  stroke-dasharray: 100;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  animation: caught-sweep 1.4s linear 0.15s forwards;
+}
+@keyframes caught-sweep {
+  to { stroke-dashoffset: 100; }
+}
+@keyframes caught-timer {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
 /* what a hovered blast or ram would do: the area it covers, the tiles it would kill,
    and where it would knock the others */
 .impact {

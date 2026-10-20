@@ -54,9 +54,9 @@ const ALL_TILES = [
   ["🀛", "GRENADES"],
   ["🀍", "HOOK"],
   ["🀎", "RAM"],
-  ["🀗", "SPIDER"],
   ["🀩", "FROST"],
   ["🀧", "SUNBEAM"],
+  ["🀗", "SPIDER"],
 ];
 // still played by the server, but not offered at the table for now
 const HELD_BACK = [
@@ -238,8 +238,9 @@ const BOARDS = {
   },
 };
 
-// what each tile, moving, smiting, and each answer to a claim does: its uses, and
-// notes on what isn't a use (reflects, webs, going again).  A use has a label, what
+// what each tile, moving, smiting, and each answer to a claim does: its uses (or,
+// with `then`, what its use leaves behind), and notes on what isn't a use (reflects,
+// smiting being forced).  A use has a label, what
 // it costs or gains (the smite's cost is this game's: "smite"), its effects, a line
 // to each, and the boards that show it, captioned when there are several.  A note is
 // [mark, text].
@@ -302,11 +303,21 @@ const REFERENCE = {
     }],
   },
   "🀗": {
-    uses: [{label: "move", lines: ["move up to 2", "leave webs where you went"], boards: [BOARDS.web]}],
-    notes: [
-      [WEB, "an enemy crossing a web loses a turn"],
-      [WEB, "webs block fireballs; fireballs and grenades clear them"],
-      ["↻", "go again after an exchange"],
+    uses: [
+      {
+        label: "move",
+        lines: ["move up to 2", "leave webs where you went", "go again afterward (max twice)"],
+        boards: [BOARDS.web],
+      },
+      {
+        label: "web",
+        then: true,
+        lines: [
+          "an enemy crossing a web loses their next turn, held until then",
+          "webs block fireballs; fireballs and grenades clear them",
+        ],
+        boards: [BOARDS.webbed],
+      },
     ],
   },
   "🀩": {
@@ -315,8 +326,17 @@ const REFERENCE = {
       cost: 3,
       lines: ["kill every tile 2 away, yours too", "ice those squares"],
       boards: [BOARDS.freeze],
+    }, {
+      label: "ice",
+      then: true,
+      lines: [
+        "a tile moving onto ice slides on the same way",
+        "until it's off the ice, or the next square is taken or off the board",
+        "fireballs and grenades melt it",
+      ],
+      boards: [BOARDS.slide, BOARDS.slideBlocked],
+      captions: ["off the ice", "or blocked"],
     }],
-    notes: [[ICE, "a tile moving onto ice slides on the same way, until it's off the ice or the next square is taken"]],
   },
   "🀧": {
     uses: [{
@@ -330,7 +350,11 @@ const REFERENCE = {
   // what's on a square, rather than a tile
   [WEB]: {
     uses: [{
-      lines: ["laid by a spider", "an enemy crossing it loses a turn", "blocks fireballs; fireballs and grenades clear it"],
+      lines: [
+        "laid by a spider",
+        "an enemy crossing it loses their next turn, held until then",
+        "blocks fireballs; fireballs and grenades clear it",
+      ],
       boards: [BOARDS.webbed],
     }],
   },

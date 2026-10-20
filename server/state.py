@@ -123,11 +123,14 @@ class State(BaseModel):
     # if an opponent passes through, they'll lose their next turn (doesn't stack)
     webs: dict[Player, list[Square]]
     skip_next_turn: dict[Player, bool]
-    go_again: bool
+    go_again: bool  # after a spider's move, the current player goes again
 
-    # Iced squares, left by ice; anyone's tile moving onto one slides on (see
-    # actions.slide).  Ice never melts.
-    ice: list[Square] = []  # when a spider exchanges, the current player may go again
+    # Iced squares, left by frost; anyone's tile moving onto one slides on (see
+    # actions.slide).  Fireballs and grenades melt it.
+    ice: list[Square] = []
+
+    # the enemy webs each player is caught in, which hold until the turn they lose
+    caught: dict[Player, list[Square]] = {Player.N: [], Player.S: []}
 
     # log of public information, grouped by turn
     public_log: list[LogTurn]
@@ -378,6 +381,7 @@ class State(BaseModel):
             coins=self.coins,
             webs=self.webs,
             ice=self.ice,
+            caught=self.caught,
             skip_next_turn=self.skip_next_turn,
             go_again=self.go_again,
             match_score=self.match_score,

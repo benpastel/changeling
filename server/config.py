@@ -36,9 +36,11 @@ POSSIBLE_TILES = [
     Tile.GRENADES,
     Tile.HOOK,
     Tile.RAM,
+    Tile.FROST,
+    Tile.SUNBEAM,
 ]
 # every tile that can be chosen for a game, in the order they are listed
-ALL_TILES = POSSIBLE_TILES + [Tile.SPIDER, Tile.FROST, Tile.SUNBEAM]
+ALL_TILES = POSSIBLE_TILES + [Tile.SPIDER]
 # still played by the server when asked for, but not offered at the table for now
 HELD_BACK = [Tile.BACKSTABBER]
 

@@ -51,7 +51,10 @@ function setUpTooltips(describe) {
       use.lines.forEach((line, j) => {
         const text = document.createElement("div");
         // a second use is an alternative; a use's price leads its first line
-        if (j === 0 && i > 0) {
+        // what a use leaves behind is named, rather than offered as an alternative
+        if (j === 0 && use.then) {
+          text.append(span("tip-or", `${use.label}: `));
+        } else if (j === 0 && i > 0) {
           text.append(span("tip-or", "or "));
         }
         if (j === 0 && use.price) {

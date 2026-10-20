@@ -280,6 +280,43 @@ function renderTerrain(board, player_view) {
   lay(player_view.ice ?? [], "ice", ICE);
 }
 
+// the turn a timer last ran down for, so each lost turn shows once
+let caughtShown = null;
+
+function renderCaught(board, player_view) {
+  // a turn lost to a web: a timer runs down over the tile that was caught, as the web
+  // that held it goes
+  const turns = player_view.public_log;
+  const last = turns.length - 1;
+  const skip = turns[last]?.events.find((event) => event.kind === "skip");
+  if (!skip || caughtShown === last) {
+    return;
+  }
+  caughtShown = last;
+  const index = player_view.piece_ids[skip.player].indexOf(skip.piece);
+  if (index === -1) {
+    return;
+  }
+  const [row, col] = player_view.positions[skip.player][index];
+  const cell = findCell(board, row, col).getBoundingClientRect();
+  const origin = board.getBoundingClientRect();
+  const timer = document.createElement("div");
+  timer.className = `caught-timer ${skip.player}`;
+  timer.style.left = `${cell.left + cell.width / 2 - origin.left}px`;
+  timer.style.top = `${cell.top + cell.height / 2 - origin.top}px`;
+  timer.innerHTML =
+    '<svg viewBox="0 0 40 40" aria-hidden="true">' +
+    '<circle class="caught-face" cx="20" cy="20" r="17" />' +
+    '<circle class="caught-sweep" cx="20" cy="20" r="8.5" pathLength="100" />' +
+    "</svg>";
+  timer.addEventListener("animationend", ({target}) => {
+    if (target === timer) {
+      timer.remove();
+    }
+  });
+  board.append(timer);
+}
+
 function renderOther(player_view) {
   // the left column: each tile its own element, so a dying tile can fly to its place in the graveyard
   for (const [selector, tiles] of [
@@ -487,4 +524,4 @@ function renderArrows(arrows) {
   return svg;
 }
 
-export {createBoard, renderBoard, renderLog, renderHand, findCell, renderOther, renderRules, ruleOf, renderTerrain};
+export {createBoard, renderBoard, renderLog, renderHand, findCell, renderOther, renderRules, ruleOf, renderTerrain, renderCaught};

@@ -11,6 +11,7 @@ import {
   renderRules,
   ruleOf,
   renderTerrain,
+  renderCaught,
 } from "./renderState.js";
 
 import {ACTION_NAMES, REFERENCE} from "./constants.js";
@@ -135,6 +136,7 @@ window.addEventListener("DOMContentLoaded", () => {
     renderOther(player_view);
     redrawSelection();
     animate(before, board, player_view);
+    renderCaught(board, player_view);
   }
 
   // the turn is shown in the strip of whoever the game is waiting on: what to do in
