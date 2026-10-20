@@ -625,6 +625,9 @@ def take_action(
             state.webs[player].remove(web)
         for web in _explosion_hits(target, state.webs[enemy]):
             state.webs[enemy].remove(web)
+        # and melt any ice
+        for ice in _explosion_hits(target, state.ice):
+            state.ice.remove(ice)
         return _explosion_hits(target, state.all_positions())
 
     if action == Tile.FIREBALL:
@@ -636,6 +639,9 @@ def take_action(
             state.webs[player].remove(web)
         for web in _explosion_hits(target, state.webs[enemy]):
             state.webs[enemy].remove(web)
+        # and melt any ice
+        for ice in _explosion_hits(target, state.ice):
+            state.ice.remove(ice)
         return _explosion_hits(target, state.all_positions())
 
     if action == Tile.ICE_MAGE:

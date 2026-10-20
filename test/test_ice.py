@@ -159,6 +159,15 @@ def test_ice_is_public():
     assert state.player_view(S).ice == [Square(1, 1)]
 
 
+def test_blasts_melt_ice_without_being_stopped_by_it():
+    state = _state([Square(0, 0)], [Square(3, 3)], ice=_row(1, 1) + _row(3, 2, 3, 4))
+    state.tiles_in_game = [Tile.FIREBALL, *state.tiles_in_game[1:]]
+    # the fireball flies over the ice at (1, 1) and hits (3, 3)
+    assert Square(3, 3) in valid_targets(Square(0, 0), state)[Tile.FIREBALL]
+    take_action(Square(0, 0), Tile.FIREBALL, Square(3, 3), state)
+    assert state.ice == [Square(1, 1)]
+
+
 # ------------------------------------------------------------------ in the game
 
 

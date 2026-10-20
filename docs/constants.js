@@ -321,6 +321,7 @@ const REFERENCE = {
         "left by an ice mage",
         "a tile moving onto it slides on the same way",
         "until it's off the ice, or the next square is taken or off the board",
+        "fireballs and grenades melt it",
       ],
       boards: [BOARDS.slide, BOARDS.slideBlocked],
       captions: ["off the ice", "or blocked"],
