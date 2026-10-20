@@ -7,6 +7,7 @@ import random
 from server.agents import Agent, Human
 from server.actions import (
     valid_targets,
+    impacts,
     take_action,
     reflect_action,
     grapple_end_square,
@@ -352,6 +353,7 @@ async def _select_action(
             prompt,
             true_action_hint=None,
             targets=None if chosen_action else actions_and_targets,
+            impacts=impacts(start, state),
         )
         if isinstance(choice, ActionAndTarget):
             # they chose an action and its target in one click

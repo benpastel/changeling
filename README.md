@@ -12,15 +12,15 @@ Each turn, each player chooses one of their tiles and chooses an ability for it 
 
 Each game uses 5 types of tiles, with 3 copies each.  The tile abilities are:
  - 🀥 FLOWER: move 1, gain $3
+ - 🀨 HARVESTER: move forward 1, gain $4
  - 🀍 HOOK: grab an enemy along a straight or diagonal line, pull them adjacent, and steal $2.  Reflected by 🀍 HOOK.
  - 🀐 BIRD: move 2, gain $2, 🔎 REVEAL one tile unused this game
  - 🀛 GRENADES: roll a grenade exactly 2 squares away in an unobstructed cardinal direction, and explode a 3x3 square.
  - 🀒 KNIVES: pay $1 to kill at range 1, or $5 to kill at range 2.  Reflected by 🀒 KNIVES.
  - 🀌 THIEF: steal $4 at range 1, and swap places with target.  Reflected by 🀌 THIEF.
- - 🀇 BACKSTABBER: pay $3 to kill behind you; or move 2 and gain $1.  Reflected by 🀗 BACKSTABBER.
  - 🀙 FIREBALL: pay $3 to shoot a fireball along a straight or diagonal line, exploding 3x3 at impact. Direct hits reflected by FIREBALL.
- - 🀩 TRICKSTER: move like a knight, gain $1; >if you land on an enemy, switch identities and bump them to a random adjacent unoccupied square.
  - 🀎 RAM: pay $3, move 1 cardinal direction, then knockback all adjacent tiles.  They die if they can't move.
+ - 🀗 SPIDER: move 2, leaving webs where you went.  An enemy crossing a web loses a turn; webs block fireballs, and fireballs and grenades clear them.
 
 After each action, opponents can:
  - ✓ ACCEPT: allow the claimed ability to proceed
@@ -39,7 +39,7 @@ There are two types of special board locations:
  - EXCHANGE squares have two face-down tiles.  When a player moves onto them, they look at the face-down tiles and optionally exchange one with their current tile.
  - If a player starts their turn occupying the BONUS square, they get bonus money and 🔎 reveal tile(s) unused this game.
 
-In randomized mode, the set of starting tiles is randomized, along with the effect of the bonus square and the smite cost.
+The table can play the starter set (fireball, harvester, hook, knives, bird), a custom pick, or a random one.  In randomized mode, the set of starting tiles is randomized, along with the effect of the bonus square and the smite cost.
 
 ## Implementation
 

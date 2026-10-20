@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Optional
 import random
 
@@ -412,11 +413,36 @@ def _ram_knockback_targets(start: Square, target: Square, state: State) -> list[
     return [s for s, d in distances.items() if d == 1 and s in obstructions]
 
 
+def _ram_outcome(
+    start: Square, target: Square, state: State
+) -> tuple[list[tuple[Square, Square]], list[Square]]:
+    """
+    Where a ram from start to target would knock each neighbouring tile, and which
+    tiles it would kill instead, for having nowhere to go.
+    """
+    # the ram has left its start for the target
+    occupied = [target if s == start else s for s in state.all_positions()]
+    obstructions = [s for s in occupied if s != target]
+    distances = _all_distances(target, obstructions)
+    pushed = []
+    killed = []
+    for knocked in [s for s, d in distances.items() if d == 1 and s in obstructions]:
+        # each knocked tile goes directly away from the target; if that's obstructed,
+        # it dies
+        end_square = _knockback_end_square(target, knocked)
+        if end_square.on_board() and end_square not in obstructions:
+            pushed.append((knocked, end_square))
+        else:
+            killed.append(knocked)
+    return pushed, killed
+
+
 def _take_ram_action(start: Square, target: Square, state: State) -> list[Square]:
     """
     Makes a ram move, updating state, and returning any tiles killed.
     """
     player = state.current_player
+    pushed, killed = _ram_outcome(start, target, state)
 
     # move to target square
     start_index = state.positions[player].index(start)
@@ -426,23 +452,52 @@ def _take_ram_action(start: Square, target: Square, state: State) -> list[Square
     state.coins[player] -= RAM_COST
 
     # knockback any neighboring tiles
-    obstructions = [s for s in state.all_positions() if s != target]
-    knockback_hits = _ram_knockback_targets(start, target, state)
-    killed = []
-    for knocked_square in knockback_hits:
-        # for each tile getting knocked back, try to move it directly away from target.
-        # if that's obstructed, kill it.
+    for knocked_square, end_square in pushed:
         knocked_player = state.player_at(knocked_square)
-        end_square = _knockback_end_square(target, knocked_square)
-
-        if end_square.on_board() and end_square not in obstructions:
-            # move it
-            knocked_index = state.positions[knocked_player].index(knocked_square)
-            state.positions[knocked_player][knocked_index] = end_square
-        else:
-            # kill it
-            killed.append(knocked_square)
+        knocked_index = state.positions[knocked_player].index(knocked_square)
+        state.positions[knocked_player][knocked_index] = end_square
     return killed
+
+
+@dataclass
+class Impact:
+    """What an attack on a square would do, beyond the square itself."""
+
+    # every square a blast covers
+    area: list[Square]
+    # every tile that would die
+    killed: list[Square]
+    # every tile that would be knocked to another square, and where to
+    pushed: list[tuple[Square, Square]]
+
+
+def impacts(start: Square, state: State) -> dict[Action, dict[Square, Impact]]:
+    """The impact of each blast and ram the tile at start could make, by target."""
+    found: dict[Action, dict[Square, Impact]] = {}
+    for action, targets in valid_targets(start, state).items():
+        if action in (Tile.FIREBALL, Tile.GRENADES):
+            found[action] = {
+                t: Impact(
+                    [
+                        s
+                        for s in (
+                            Square(t.row + dr, t.col + dc)
+                            for dr in (-1, 0, 1)
+                            for dc in (-1, 0, 1)
+                        )
+                        if s.on_board()
+                    ],
+                    _explosion_hits(t, state.all_positions()),
+                    [],
+                )
+                for t in targets
+            }
+        elif action == Tile.RAM:
+            found[action] = {}
+            for t in targets:
+                pushed, killed = _ram_outcome(start, t, state)
+                found[action][t] = Impact([], killed, pushed)
+    return found
 
 
 def take_action(

@@ -35,6 +35,8 @@
   --primary-hover: #1a4399;
   --selected: var(--ink);
   --on-selected: var(--on-strong);
+  /* the ghosted area a blast would cover */
+  --blast: rgba(208, 52, 44, 0.14);
   --scrim: rgba(255, 255, 255, 0.82);
   --shadow: rgba(0, 0, 0, 0.12);
   --dim-tile: #555555;
@@ -62,6 +64,7 @@
   /* a solid light block glares on the dark table, so a chosen option is a lifted grey */
   --selected: #464b55;
   --on-selected: var(--ink);
+  --blast: rgba(255, 123, 114, 0.14);
   --scrim: rgba(19, 21, 24, 0.85);
   --shadow: rgba(0, 0, 0, 0.55);
   --dim-tile: #9da1a8;
@@ -982,6 +985,41 @@ selection; colour only ever says whose piece it is
 .claim-line .claim-halo {
   stroke: var(--bg);
   stroke-width: 2cqmin;
+}
+/* what a hovered blast or ram would do: the area it covers, the tiles it would kill,
+   and where it would knock the others */
+.impact {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.impact-area {
+  fill: var(--blast);
+}
+.impact line {
+  stroke-linecap: round;
+}
+.impact-kill {
+  stroke: var(--them);
+  stroke-width: 1.1cqmin;
+}
+.impact-halo {
+  stroke: var(--bg);
+  stroke-width: 2cqmin;
+}
+.impact-push {
+  color: var(--ink);
+  opacity: 0.55;
+}
+.impact-push line {
+  stroke: currentColor;
+  stroke-width: 0.9cqmin;
+}
+.impact-push polygon {
+  fill: currentColor;
 }
 /* the claimed ability (and any reflect, and the answers) written beside the line */
 .claim-note {

@@ -50,18 +50,22 @@ const ALL_TILES = [
   ["🀒", "KNIVES"],
   ["🀌", "THIEF"],
   ["🀙", "FIREBALL"],
-  ["🀇", "BACKSTABBER"],
   ["🀛", "GRENADES"],
   ["🀍", "HOOK"],
   ["🀎", "RAM"],
-  ["🀩", "TRICKSTER"],
   ["🀗", "SPIDER"],
+];
+// still played by the server, but not offered at the table for now
+const HELD_BACK = [
+  ["🀇", "BACKSTABBER"],
+  ["🀩", "TRICKSTER"],
 ];
 // names shown under the action panel buttons
 const ACTION_NAMES = {
   "↕": "MOVE",
   "⚡": "SMITE",
   ...Object.fromEntries(ALL_TILES),
+  ...Object.fromEntries(HELD_BACK),
   "✓": "ACCEPT",
   "🚩": "CHALLENGE",
 };

@@ -7,6 +7,7 @@ from server.constants import (
     Tile,
     Response,
 )
+from server.actions import Impact
 from server.seat import Seat
 from server.choices import (
     choose_action_or_square,
@@ -31,6 +32,7 @@ class Human:
         prompt: str,
         true_action_hint: Action | None,
         targets: dict[Action, list[Square]] | None = None,
+        impacts: dict[Action, dict[Square, Impact]] | None = None,
     ) -> Action | Square | ActionAndTarget:
         return await choose_action_or_square(
             possible_actions,
@@ -38,6 +40,7 @@ class Human:
             prompt,
             self.seat,
             targets,
+            impacts,
         )
 
     async def choose_square_or_hand(

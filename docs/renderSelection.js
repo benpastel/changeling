@@ -8,6 +8,8 @@
 //    annotated with the claimed ability.  A reflect is added to the note; the answers
 //    to a claim are offered beside it (see renderChoice.js).
 //  - A target picked on its own (the tile a player is about to lose) is a pick.
+//  - Hovering a blast or a ram's option ghosts what it would do: the blast's area
+//    tinted, a cross on every tile that would die, an arrow on every tile knocked back.
 
 import {
   CHOSEN_START,
@@ -58,7 +60,7 @@ function optionOrder(action) {
   return index === -1 ? TILE_ORDER.length : index;
 }
 
-function drawTargets(board, targets) {
+function drawTargets(board, targets, impacts) {
   const bySquare = new Map();
   for (const [action, squares] of Object.entries(targets)) {
     for (const [row, col] of squares) {
@@ -74,9 +76,78 @@ function drawTargets(board, targets) {
     options.classList.add("cell-options");
     actions.sort((a, b) => optionOrder(a) - optionOrder(b));
     for (const action of actions) {
-      options.append(option(action));
+      const element = option(action);
+      const impact = impacts[action]?.find(({target}) => target[0] === row && target[1] === col);
+      if (impact) {
+        // mouseover, not mouseenter, so it's drawn before the tooltip places itself
+        // clear of it
+        element.addEventListener("mouseover", () => drawImpact(board, impact));
+        element.addEventListener("mouseout", () => clearImpact(board));
+      }
+      options.append(element);
     }
     findCell(board, row, col).append(options);
+  }
+}
+
+function svgElement(name, attributes) {
+  const element = document.createElementNS(SVG, name);
+  for (const [key, value] of Object.entries(attributes)) {
+    element.setAttribute(key, value);
+  }
+  return element;
+}
+
+function drawImpact(board, {area, killed, pushed}) {
+  clearImpact(board);
+  const svg = document.createElementNS(SVG, "svg");
+  svg.classList.add("impact");
+  const origin = board.getBoundingClientRect();
+  const size = findCell(board, 0, 0).getBoundingClientRect().width;
+  for (const [row, col] of area) {
+    const cell = findCell(board, row, col).getBoundingClientRect();
+    svg.append(svgElement("rect", {
+      class: "impact-area",
+      x: cell.left - origin.left, y: cell.top - origin.top,
+      width: cell.width, height: cell.height,
+    }));
+  }
+  // an arrow from the middle of each knocked tile, pointing where it goes
+  for (const [from, to] of pushed) {
+    const [x1, y1] = pieceCenter(board, from);
+    const [x2, y2] = pieceCenter(board, to);
+    const length = Math.hypot(x2 - x1, y2 - y1);
+    const [ux, uy] = [(x2 - x1) / length, (y2 - y1) / length];
+    const [sx, sy] = [x1 - ux * size * 0.15, y1 - uy * size * 0.15];
+    const [ex, ey] = [x1 + ux * size * 0.42, y1 + uy * size * 0.42];
+    const head = size * 0.16;
+    const [bx, by] = [ex - ux * head, ey - uy * head];
+    const [px, py] = [-uy * head * 0.6, ux * head * 0.6];
+    const arrow = svgElement("g", {class: "impact-push"});
+    arrow.append(
+      svgElement("line", {x1: sx, y1: sy, x2: bx, y2: by}),
+      svgElement("polygon", {points: `${ex},${ey} ${bx + px},${by + py} ${bx - px},${by - py}`}),
+    );
+    svg.append(arrow);
+  }
+  // a cross on each tile that would die
+  for (const square of killed) {
+    const [x, y] = pieceCenter(board, square);
+    const arm = size * 0.22;
+    for (const kind of ["impact-halo", "impact-kill"]) {
+      for (const [dx, dy] of [[arm, arm], [arm, -arm]]) {
+        svg.append(svgElement("line", {
+          class: kind, x1: x - dx, y1: y - dy, x2: x + dx, y2: y + dy,
+        }));
+      }
+    }
+  }
+  board.append(svg);
+}
+
+function clearImpact(board) {
+  for (const element of board.querySelectorAll(".impact")) {
+    element.remove();
   }
 }
 
@@ -205,7 +276,7 @@ function clearSelection(board) {
   for (const element of board.querySelectorAll(`.${CHOSEN_START}, .${CHOSEN_TARGET}`)) {
     element.classList.remove(CHOSEN_START, CHOSEN_TARGET);
   }
-  for (const element of board.querySelectorAll(".claim-line, .claim-note, .cell-options")) {
+  for (const element of board.querySelectorAll(".claim-line, .claim-note, .cell-options, .impact")) {
     element.remove();
   }
 }
@@ -227,7 +298,7 @@ function renderSelection(board, selection, highlight) {
     const [row, col] = selection.target;
     findCell(board, row, col).classList.add(CHOSEN_TARGET);
   }
-  drawTargets(board, targets);
+  drawTargets(board, targets, highlight?.impacts ?? {});
 }
 
 export {renderSelection, option};

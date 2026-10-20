@@ -72,7 +72,7 @@ function setUpTooltips(describe) {
     more.innerHTML = `${RIGHT_CLICK}<span>right-click for more</span>`;
     tip.append(more);
     tip.hidden = false;
-    place(tip, found.element.getBoundingClientRect());
+    place(tip, clearOf(found.element));
   });
   // anything that changes the page under the pointer takes the tip away
   for (const event of ["mousedown", "contextmenu", "scroll", "keydown", "blur"]) {
@@ -86,6 +86,18 @@ function span(className, text) {
   element.className = className;
   element.textContent = text;
   return element;
+}
+
+// the element, and any blast it ghosts on the board, which the tip shouldn't cover
+function clearOf(element) {
+  const rects = [element, ...document.querySelectorAll(".impact > *")].map((e) =>
+    e.getBoundingClientRect(),
+  );
+  const left = Math.min(...rects.map((r) => r.left));
+  const right = Math.max(...rects.map((r) => r.right));
+  const top = Math.min(...rects.map((r) => r.top));
+  const bottom = Math.max(...rects.map((r) => r.bottom));
+  return {left, top, width: right - left, height: bottom - top, bottom};
 }
 
 function place(tip, rect) {

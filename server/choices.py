@@ -10,6 +10,7 @@ from server.constants import (
     OutEventType,
     ActionAndTarget,
 )
+from server.actions import Impact
 from server.seat import Seat
 
 # Generally incoming messages are invalid unless we've prompted for them.
@@ -106,6 +107,7 @@ async def _send_highlights(
     hand_tiles: list[Tile],
     board_tiles: list[Tile],
     targets: dict[Action, list[Square]] | None = None,
+    impacts: dict[Action, dict[Square, Impact]] | None = None,
 ):
     event = {
         "type": OutEventType.HIGHLIGHT_CHANGE,
@@ -116,6 +118,19 @@ async def _send_highlights(
         # every square each action could target, for drawing the options on the board
         "targets": {
             action.value: squares for action, squares in (targets or {}).items()
+        },
+        # what each blast and ram would hit, for drawing it while its option is hovered
+        "impacts": {
+            action.value: [
+                {
+                    "target": target,
+                    "area": impact.area,
+                    "killed": impact.killed,
+                    "pushed": impact.pushed,
+                }
+                for target, impact in by_target.items()
+            ]
+            for action, by_target in (impacts or {}).items()
         },
     }
     await seat.send(event)
@@ -129,9 +144,12 @@ async def _highlighted(
     hand_tiles: list[Tile] = [],
     board_tiles: list[Tile] = [],
     targets: dict[Action, list[Square]] | None = None,
+    impacts: dict[Action, dict[Square, Impact]] | None = None,
 ):
     """Sends a list of highlighted options to the player.  Clears highlights when done."""
-    await _send_highlights(seat, squares, actions, hand_tiles, board_tiles, targets)
+    await _send_highlights(
+        seat, squares, actions, hand_tiles, board_tiles, targets, impacts
+    )
     try:
         yield
     finally:
@@ -156,6 +174,7 @@ async def choose_action_or_square(
     prompt: str,
     seat: Seat,
     targets: dict[Action, list[Square]] | None = None,
+    impacts: dict[Action, dict[Square, Impact]] | None = None,
 ) -> Action | Square | ActionAndTarget:
     """
     If `targets` is given, the player may also pick an action and its target in one
@@ -166,6 +185,7 @@ async def choose_action_or_square(
         actions=cast(list[Action | Response], possible_actions),
         squares=possible_squares,
         targets=targets,
+        impacts=impacts,
     ):
         # loop until we get a valid action or square
         while True:

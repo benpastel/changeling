@@ -33,13 +33,14 @@ POSSIBLE_TILES = [
     Tile.KNIVES,
     Tile.THIEF,
     Tile.FIREBALL,
-    Tile.BACKSTABBER,
     Tile.GRENADES,
     Tile.HOOK,
     Tile.RAM,
 ]
 # every tile that can be chosen for a game, in the order they are listed
-ALL_TILES = POSSIBLE_TILES + [Tile.TRICKSTER, Tile.SPIDER]
+ALL_TILES = POSSIBLE_TILES + [Tile.SPIDER]
+# still played by the server when asked for, but not offered at the table for now
+HELD_BACK = [Tile.BACKSTABBER, Tile.TRICKSTER]
 
 # how many tile types are in each game; there are 3 copies of each
 TILES_PER_GAME = 5
@@ -50,7 +51,7 @@ DEFAULT_TILES = [
     Tile.HARVESTER,
     Tile.HOOK,
     Tile.KNIVES,
-    Tile.BACKSTABBER,
+    Tile.BIRD,
 ]
 
 
