@@ -54,7 +54,14 @@ DEFAULT_LEVEL = "easy"
 BOT_DELAY = float(os.environ.get("BOT_DELAY", "1"))
 
 # claims that can be reflected by the same tile, when they hit an enemy tile
-REFLECTABLE = {Tile.KNIVES, Tile.BACKSTABBER, Tile.HOOK, Tile.THIEF, Tile.FIREBALL}
+REFLECTABLE = {
+    Tile.KNIVES,
+    Tile.BACKSTABBER,
+    Tile.HOOK,
+    Tile.THIEF,
+    Tile.FIREBALL,
+    Tile.SUNBEAM,
+}
 # claims that kill or steal, which an enemy piece might make against us next turn
 HARMFUL = {
     Tile.KNIVES,
@@ -64,7 +71,7 @@ HARMFUL = {
     Tile.RAM,
     Tile.HOOK,
     Tile.THIEF,
-    Tile.ICE_MAGE,
+    Tile.FROST,
 }
 # roughly how good each tile is to hold, in coins, before what it can do right now
 TILE_WORTH = {
@@ -78,9 +85,14 @@ TILE_WORTH = {
     Tile.FLOWER: 1.5,
     Tile.BIRD: 1.5,
     Tile.RAM: 1.5,
-    Tile.ICE_MAGE: 1.5,
+    Tile.FROST: 1.5,
+    Tile.SUNBEAM: 1,
     Tile.SPIDER: 1,
 }
+
+# what it's worth, in coins, to see one of the enemy's tiles (or to show them one of
+# ours), e.g. by a sunbeam
+SIGHT = 0.8
 
 # how much more likely a piece is to be a tile it has claimed, unchallenged
 CLAIM_EVIDENCE = 3.0
@@ -272,6 +284,16 @@ def _score_hits(view: State, sim: State, actor: Player, hits: list[Square]) -> f
     return value
 
 
+def _sight(view: State, sim: State, player: Player) -> float:
+    """What `player` gains by tiles newly revealed: theirs seen, less ours shown."""
+    value = 0.0
+    for owner, sign in ((other_player(player), SIGHT), (player, -SIGHT / 2)):
+        before = view.tiles_on_board_revealed[owner]
+        after = sim.tiles_on_board_revealed[owner]
+        value += sign * sum(now and not was for was, now in zip(before, after))
+    return value
+
+
 def outcome(
     view: State, actor: Player, start: Square, action: Action, target: Square
 ) -> tuple[float, State]:
@@ -280,6 +302,7 @@ def outcome(
     hits = take_action(start, action, target, sim)
     value = _standing(sim, actor) - _standing(view, actor)
     value += _score_hits(view, sim, actor, hits)
+    value += _sight(view, sim, actor)
     return value, sim
 
 
@@ -293,6 +316,7 @@ def reflected_outcome(
         _standing(sim, claimer)
         - _standing(view, claimer)
         + _score_hits(view, sim, claimer, hits)
+        + _sight(view, sim, claimer)
     )
 
 
@@ -304,7 +328,7 @@ def _enemy_hits(sim: State, start: Square, action: Action, target: Square) -> li
         return _explosion_hits(target, sim.all_positions())
     if action == Tile.RAM:
         return _take_ram_action(start, target, _sim(sim, sim.current_player))
-    if action == Tile.ICE_MAGE:
+    if action == Tile.FROST:
         return [s for s in sim.all_positions() if s in ice_ring(start)]
     return []
 

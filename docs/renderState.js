@@ -124,6 +124,7 @@ function renderBoard(board, player_view) {
 const LOG_WORDS = {
   reflect: "reflects",
   reveal: "reveals",
+  lit: "shows",
   lose: "loses",
   exchange: "may have exchanged",
   web: "caught in web",
@@ -419,7 +420,8 @@ function renderDiagram(diagram, actor) {
       if (token.includes("*")) square.classList.add("blast");
       if (token.includes("W")) square.classList.add("webbed");
       if (token.includes("I")) square.classList.add("iced");
-      const mark = token.replace(/[*WI]/g, "");
+      if (token.includes("L")) square.classList.add("lit");
+      const mark = token.replace(/[*WIL]/g, "");
       const markElement = document.createElement("span");
       if (mark === "@") {
         markElement.className = "rule-tile you";

@@ -24,7 +24,8 @@ const TILES = {
   "🀗": "🀗", // spider
   "🀇": "🀇", // backstabber
   "🀙": "🀙", // fireball
-  "🀩": "🀩", // ice mage
+  "🀩": "🀩", // frost
+  "🀧": "🀧", // sunbeam
   "🀎": "🀎", // ram
   "🀌": "🀌", // thief
 };
@@ -54,13 +55,14 @@ const ALL_TILES = [
   ["🀍", "HOOK"],
   ["🀎", "RAM"],
   ["🀗", "SPIDER"],
-  ["🀩", "ICE MAGE"],
+  ["🀩", "FROST"],
+  ["🀧", "SUNBEAM"],
 ];
 // still played by the server, but not offered at the table for now
 const HELD_BACK = [
   ["🀇", "BACKSTABBER"],
 ];
-// squares a tile has changed: a spider's web, and an ice mage's ice
+// squares a tile has changed: a spider's web, and frost's ice
 const WEB = "▦";
 const ICE = "❄";
 // names shown under the action panel buttons
@@ -79,7 +81,7 @@ const ACTION_NAMES = {
 //   .  empty           @  the acting tile        g  where it started (dashed)
 //   o  it can move here    x  it can hit an enemy here    E  an enemy tile
 //   ↖ ↑ ↗ ← → ↙ ↘  a tile pushed or pulled that way
-// with suffixes  *  inside an explosion   W  a web   I  ice.  A board is its grid, or
+// with suffixes  *  inside an explosion   W  a web   I  ice   L  in a sunbeam.  A board is its grid, or
 // {grid, arrows, mine}, an arrow being [from row, from column, to row, to column];
 // arrows are an enemy's being moved, or with `mine`, your own tile's.
 const BOARDS = {
@@ -202,6 +204,14 @@ const BOARDS = {
     "xI . . . xI",
     "xI xI xI xI xI",
   ],
+  // lighting up a line, the enemy it reaches first and the one behind
+  beam: [
+    ". . EL . .",
+    ". . EL . .",
+    ". . L . .",
+    ". . @L . .",
+    ". . . . .",
+  ],
   // a step onto ice, sliding on until off it
   slide: {
     grid: [
@@ -308,6 +318,15 @@ const REFERENCE = {
     }],
     notes: [[ICE, "a tile moving onto ice slides on the same way, until it's off the ice or the next square is taken"]],
   },
+  "🀧": {
+    uses: [{
+      label: "shine",
+      cost: 1,
+      lines: ["shine a beam straight up, down, left, or right, to the edge", "reveal every tile it crosses, yours too"],
+      boards: [BOARDS.beam],
+    }],
+    notes: [[REFLECTED, "reflected by sunbeam, by the first tile it reaches"]],
+  },
   // what's on a square, rather than a tile
   [WEB]: {
     uses: [{
@@ -318,7 +337,7 @@ const REFERENCE = {
   [ICE]: {
     uses: [{
       lines: [
-        "left by an ice mage",
+        "left by frost",
         "a tile moving onto it slides on the same way",
         "until it's off the ice, or the next square is taken or off the board",
         "fireballs and grenades melt it",

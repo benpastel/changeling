@@ -14,7 +14,7 @@ def _state(north: list[Square], south: list[Square], ice: list[Square]) -> State
     random.seed(0)
     state = new_state(
         {p: 0 for p in Player},
-        [Tile.ICE_MAGE, Tile.RAM, Tile.THIEF, Tile.HOOK, Tile.BIRD],
+        [Tile.FROST, Tile.RAM, Tile.THIEF, Tile.HOOK, Tile.BIRD],
         N,
         {p: p.value for p in Player},
     )
@@ -117,17 +117,17 @@ def test_a_hooked_tile_on_ice_stops_against_the_hook():
     assert state.positions[S] == [Square(2, 1), Square(4, 4)]
 
 
-# ------------------------------------------------------------------ the ice mage
+# ------------------------------------------------------------------ frost
 
 
-def test_the_ice_mage_kills_and_ices_the_ring_around_it_own_tiles_too():
+def test_frost_kills_and_ices_the_ring_around_it_own_tiles_too():
     state = _state(
         [Square(2, 2), Square(0, 0)],
         [Square(4, 3), Square(3, 3)],
         ice=[],
     )
-    assert valid_targets(Square(2, 2), state)[Tile.ICE_MAGE] == [Square(2, 2)]
-    killed = take_action(Square(2, 2), Tile.ICE_MAGE, Square(2, 2), state)
+    assert valid_targets(Square(2, 2), state)[Tile.FROST] == [Square(2, 2)]
+    killed = take_action(Square(2, 2), Tile.FROST, Square(2, 2), state)
     # the corner and the far edge are in the ring; (3, 3) is too close
     assert sorted(killed) == [Square(0, 0), Square(4, 3)]
     assert len(state.ice) == 16
@@ -135,9 +135,9 @@ def test_the_ice_mage_kills_and_ices_the_ring_around_it_own_tiles_too():
     assert state.coins[N] == 2
 
 
-def test_an_ice_mage_by_the_edge_ices_only_what_is_on_the_board():
+def test_frost_by_the_edge_ices_only_what_is_on_the_board():
     state = _state([Square(0, 0)], [Square(4, 4)], ice=[Square(2, 2)])
-    take_action(Square(0, 0), Tile.ICE_MAGE, Square(0, 0), state)
+    take_action(Square(0, 0), Tile.FROST, Square(0, 0), state)
     # (0..2, 2) and (2, 0..1); (2, 2) was iced already
     assert sorted(state.ice) == [
         Square(0, 2),
@@ -148,10 +148,10 @@ def test_an_ice_mage_by_the_edge_ices_only_what_is_on_the_board():
     ]
 
 
-def test_the_ice_mage_needs_its_cost():
+def test_frost_needs_its_cost():
     state = _state([Square(2, 2)], [Square(0, 0)], ice=[])
     state.coins[N] = 2
-    assert Tile.ICE_MAGE not in valid_targets(Square(2, 2), state)
+    assert Tile.FROST not in valid_targets(Square(2, 2), state)
 
 
 def test_ice_is_public():

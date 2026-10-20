@@ -17,7 +17,8 @@ from server.game import _resolve_action, play_one_game
 from server.state import LogKind, State, new_state
 
 # tiles with every kind of action between them, beyond the starter set
-EVERYTHING = [Tile.ICE_MAGE, Tile.SPIDER, Tile.RAM, Tile.THIEF, Tile.GRENADES]
+EVERYTHING = [Tile.FROST, Tile.SPIDER, Tile.RAM, Tile.THIEF, Tile.GRENADES]
+LIGHT = [Tile.SUNBEAM, Tile.KNIVES, Tile.HOOK, Tile.FIREBALL, Tile.BIRD]
 
 
 def _play(north: str, south: str, tiles: list[Tile] | None, seed: int) -> State:
@@ -47,8 +48,8 @@ def _play(north: str, south: str, tiles: list[Tile] | None, seed: int) -> State:
 @pytest.mark.parametrize("north", LEVELS)
 @pytest.mark.parametrize("south", LEVELS)
 def test_every_level_plays_games_to_the_end(north, south):
-    # random tile sets, and one with ice mages, spiders, rams, thieves and grenades
-    for seed, tiles in [(1, None), (2, None), (3, EVERYTHING)]:
+    # random tile sets, and one with frost, spiders, rams, thieves and grenades
+    for seed, tiles in [(1, None), (2, None), (3, EVERYTHING), (4, LIGHT)]:
         state = _play(north, south, tiles, seed)
         assert state.game_result() != GameResult.ONGOING
 

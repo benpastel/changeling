@@ -31,6 +31,7 @@ class LogKind(str, Enum):
     REFLECT = "reflect"  # claimed a tile to reflect the opponent's claim
     CHALLENGE = "challenge"
     REVEAL = "reveal"  # a challenged tile was revealed; `action` is the tile
+    LIT = "lit"  # a tile was revealed by a sunbeam; `action` is the tile
     LOSE = "lose"  # lost a tile on board; `action` is the tile
     SMITE = "smite"
     BONUS = (

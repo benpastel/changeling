@@ -41,6 +41,8 @@
   --ice: #dcf0f6;
   --ice-sheen: rgba(255, 255, 255, 0.95);
   --frost: rgba(64, 170, 205, 0.3);
+  /* the line a sunbeam would light */
+  --sun: rgba(240, 180, 30, 0.3);
   --scrim: rgba(255, 255, 255, 0.82);
   --shadow: rgba(0, 0, 0, 0.12);
   --dim-tile: #555555;
@@ -72,6 +74,7 @@
   --ice: #1d3640;
   --ice-sheen: rgba(170, 225, 240, 0.16);
   --frost: rgba(120, 205, 230, 0.25);
+  --sun: rgba(255, 205, 80, 0.2);
   --scrim: rgba(19, 21, 24, 0.85);
   --shadow: rgba(0, 0, 0, 0.55);
   --dim-tile: #9da1a8;
@@ -1042,6 +1045,9 @@ selection; colour only ever says whose piece it is
 .impact-area.frozen {
   fill: var(--frost);
 }
+.impact-area.lit {
+  fill: var(--sun);
+}
 .impact line {
   stroke-linecap: round;
 }
@@ -1756,6 +1762,9 @@ the same place
   stroke-width: 0.07;
   stroke-linecap: round;
   pointer-events: none;
+}
+.rule-square.lit {
+  background-color: var(--sun);
 }
 .rule-arrows.mine {
   color: var(--you);

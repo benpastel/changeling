@@ -116,7 +116,7 @@ function drawImpact(board, {player, start}, action, {area, killed, moved}) {
   for (const [row, col] of area) {
     const cell = findCell(board, row, col).getBoundingClientRect();
     svg.append(svgElement("rect", {
-      class: action === "🀩" ? "impact-area frozen" : "impact-area",
+      class: {"🀩": "impact-area frozen", "🀧": "impact-area lit"}[action] ?? "impact-area",
       x: cell.left - origin.left, y: cell.top - origin.top,
       width: cell.width, height: cell.height,
     }));
@@ -201,12 +201,14 @@ function drawClaim(board, selection) {
     // a cross where it attacks
     const [ux, uy] = [(x2 - x1) / length, (y2 - y1) / length];
     const attack = isAttack(board, selection);
+    // a sunbeam just shines on its target
+    const beam = action === "🀧";
     const head = width * 0.04;
     const line = document.createElementNS(SVG, "line");
     line.setAttribute("x1", x1);
     line.setAttribute("y1", y1);
-    line.setAttribute("x2", attack ? x2 : x2 - ux * head * 0.8);
-    line.setAttribute("y2", attack ? y2 : y2 - uy * head * 0.8);
+    line.setAttribute("x2", attack || beam ? x2 : x2 - ux * head * 0.8);
+    line.setAttribute("y2", attack || beam ? y2 : y2 - uy * head * 0.8);
     svg.append(line);
     if (attack) {
       const arm = width * 0.02;
@@ -221,7 +223,7 @@ function drawClaim(board, selection) {
           svg.append(stroke);
         }
       }
-    } else {
+    } else if (!beam) {
       svg.append(arrowhead(x2, y2, ux, uy, head));
     }
     board.append(svg);

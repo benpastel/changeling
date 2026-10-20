@@ -32,7 +32,8 @@ GRAPPLE_STEAL_AMOUNT = 2
 THIEF_STEAL_AMOUNT = 4
 BACKSTAB_COST = 3
 RAM_COST = 3
-ICE_MAGE_COST = 3
+FROST_COST = 3
+SUNBEAM_COST = 1
 WEB_STEAL_AMOUNT = 3
 
 
@@ -327,9 +328,18 @@ def valid_targets(start: Square, state: State) -> dict[Action, list[Square]]:
     )
     actions[Tile.HARVESTER] = [forward] if forward in empty_targets else []
 
-    # the ice mage freezes the ring around itself, so it targets its own square
-    if coins >= ICE_MAGE_COST:
-        actions[Tile.ICE_MAGE] = [start]
+    # frost freezes the ring around itself, so it targets its own square
+    if coins >= FROST_COST:
+        actions[Tile.FROST] = [start]
+
+    # the sunbeam aims at the first tile in a straight line, if the beam reaches an
+    # enemy at all
+    if coins >= SUNBEAM_COST:
+        actions[Tile.SUNBEAM] = []
+        for step in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            lit = [s for s in _line(start, step) if s in state.all_positions()]
+            if any(s in enemy_positions for s in lit):
+                actions[Tile.SUNBEAM].append(lit[0])
 
     # see `grapple_end_square` for the definition of valid grapple targets
     actions[Tile.HOOK] = [
@@ -463,8 +473,10 @@ def impacts(start: Square, state: State) -> dict[Action, dict[Square, Impact]]:
             ]
             if action in (Tile.FIREBALL, Tile.GRENADES):
                 area = _around(target, 1)
-            elif action == Tile.ICE_MAGE:
+            elif action == Tile.FROST:
                 area = ice_ring(start)
+            elif action == Tile.SUNBEAM:
+                area = [start] + sunbeam(start, target)
             else:
                 area = []
             found[action][target] = Impact(area, killed, moved)
@@ -481,8 +493,23 @@ def _around(center: Square, distance: int) -> list[Square]:
     ]
 
 
+def _line(start: Square, step: tuple[int, int]) -> list[Square]:
+    """Every square from start (not included) to the edge, going `step` at a time."""
+    squares = []
+    square = Square(start.row + step[0], start.col + step[1])
+    while square.on_board():
+        squares.append(square)
+        square = Square(square.row + step[0], square.col + step[1])
+    return squares
+
+
+def sunbeam(start: Square, target: Square) -> list[Square]:
+    """The squares a sunbeam from start towards target crosses, to the edge."""
+    return _line(start, _step(start, target))
+
+
 def ice_ring(center: Square) -> list[Square]:
-    """The squares an ice mage freezes: the edge of the 5x5 square around it."""
+    """The squares frost freezes: the edge of the 5x5 square around it."""
     return [s for s in _around(center, 2) if s not in _around(center, 1)]
 
 
@@ -644,9 +671,17 @@ def take_action(
             state.ice.remove(ice)
         return _explosion_hits(target, state.all_positions())
 
-    if action == Tile.ICE_MAGE:
+    if action == Tile.SUNBEAM:
+        # pay cost, and reveal every tile in the beam
+        state.coins[player] -= SUNBEAM_COST
+        for square in sunbeam(start, target):
+            if square in state.all_positions():
+                state.reveal_at(square)
+        return []
+
+    if action == Tile.FROST:
         # pay cost
-        state.coins[player] -= ICE_MAGE_COST
+        state.coins[player] -= FROST_COST
 
         # ice the ring, and kill everything on it, own tiles too
         ring = ice_ring(start)
@@ -692,6 +727,14 @@ def reflect_action(
     if action == Tile.KNIVES or action == Tile.BACKSTABBER:
         # kill start @ no cost
         return [start]
+
+    if action == Tile.SUNBEAM:
+        # the beam goes back from the target through start, revealing it and every tile
+        # behind it @ no cost
+        for square in sunbeam(target, start):
+            if square in state.all_positions():
+                state.reveal_at(square)
+        return []
 
     if action == Tile.HOOK:
         # move start next to target

@@ -91,9 +91,13 @@ class Tile(str, Enum):
     # OR: move 2, gain $1
     BACKSTABBER = "🀇"
 
-    # ice mage: $3 to kill everything in the ring 2 squares away, own tiles too, and ice it
+    # frost: $3 to kill everything in the ring 2 squares away, own tiles too, and ice it
     # a tile moving onto ice slides on the same way until it's off the ice or blocked
-    ICE_MAGE = "🀩"
+    FROST = "🀩"
+
+    # $1 to shine a beam straight (not diagonally) to the edge, revealing every tile
+    # it crosses; the first tile it reaches can reflect it with a sunbeam
+    SUNBEAM = "🀧"
 
     # steal $4, swap places with target
     THIEF = "🀌"

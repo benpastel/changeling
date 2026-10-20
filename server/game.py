@@ -8,6 +8,7 @@ from server.agents import Agent, Human
 from server.actions import (
     valid_targets,
     impacts,
+    sunbeam,
     take_action,
     reflect_action,
     path,
@@ -222,6 +223,19 @@ async def _resolve_action(
         if square != before[player][piece]
         and not (action == Tile.RAM and before[player][piece] != start)
     ]
+
+    # what a sunbeam showed, from wherever it shone
+    if action == Tile.SUNBEAM:
+        beam = sunbeam(target, start) if reflect else sunbeam(start, target)
+        for square in beam:
+            owner = state.maybe_player_at(square)
+            if owner is not None:
+                state.log(
+                    LogKind.LIT,
+                    owner,
+                    state.tile_at(square),
+                    piece=state.piece_at(square),
+                )
 
     for _ in range(repeats):
         for hit in hits:
@@ -512,6 +526,10 @@ async def _select_response(
         # only the kill can be reflected; moving onto an empty square has no defender
         # Tile.BACKSTABBER reflects Tile.BACKSTABBER
         possible_responses.append(Tile.BACKSTABBER)
+    elif action == Tile.SUNBEAM and player_at_target == state.other_player:
+        # Tile.SUNBEAM reflects Tile.SUNBEAM, at the first tile it reaches; the tiles
+        # behind it are just caught in the light
+        possible_responses.append(Tile.SUNBEAM)
     elif action == Tile.FIREBALL and player_at_target == state.other_player:
         # Tile.FIREBALL reflects Tile.FIREBALL, but only if the direct target is an enemy
         possible_responses.append(Tile.FIREBALL)
