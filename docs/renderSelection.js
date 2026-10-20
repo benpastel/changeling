@@ -60,7 +60,7 @@ function optionOrder(action) {
   return index === -1 ? TILE_ORDER.length : index;
 }
 
-function drawTargets(board, targets, impacts) {
+function drawTargets(board, targets, impacts, selection) {
   const bySquare = new Map();
   for (const [action, squares] of Object.entries(targets)) {
     for (const [row, col] of squares) {
@@ -78,10 +78,19 @@ function drawTargets(board, targets, impacts) {
     for (const action of actions) {
       const element = option(action);
       const impact = impacts[action]?.find(({target}) => target[0] === row && target[1] === col);
-      if (impact) {
+      const moves = selection.start && moving(board, selection.player, action, [row, col]);
+      if (impact || moves) {
         // mouseover, not mouseenter, so it's drawn before the tooltip places itself
         // clear of it
-        element.addEventListener("mouseover", () => drawImpact(board, impact));
+        element.addEventListener("mouseover", () => {
+          clearImpact(board);
+          if (moves) {
+            drawMove(board, selection.player, selection.start, [row, col]);
+          }
+          if (impact) {
+            drawImpact(board, impact);
+          }
+        });
         element.addEventListener("mouseout", () => clearImpact(board));
       }
       options.append(element);
@@ -99,7 +108,6 @@ function svgElement(name, attributes) {
 }
 
 function drawImpact(board, {area, killed, pushed}) {
-  clearImpact(board);
   const svg = document.createElementNS(SVG, "svg");
   svg.classList.add("impact");
   const origin = board.getBoundingClientRect();
@@ -151,6 +159,28 @@ function clearImpact(board) {
   }
 }
 
+function arrowhead(x, y, ux, uy, head) {
+  const [bx, by] = [x - ux * head, y - uy * head];
+  const [px, py] = [-uy * head * 0.55, ux * head * 0.55];
+  return svgElement("polygon", {points: `${x},${y} ${bx + px},${by + py} ${bx - px},${by - py}`});
+}
+
+// the claim line a move would draw, ghosted, from the piece to where it would go
+function drawMove(board, player, start, target) {
+  const [x1, y1] = pieceCenter(board, start);
+  const [x2, y2] = pieceCenter(board, target);
+  const length = Math.hypot(x2 - x1, y2 - y1);
+  const [ux, uy] = [(x2 - x1) / length, (y2 - y1) / length];
+  const head = board.getBoundingClientRect().width * 0.04;
+  const svg = document.createElementNS(SVG, "svg");
+  svg.classList.add("claim-line", "impact", "ghost-move", player);
+  svg.append(
+    svgElement("line", {x1, y1, x2: x2 - ux * head * 0.8, y2: y2 - uy * head * 0.8}),
+    arrowhead(x2, y2, ux, uy, head),
+  );
+  board.append(svg);
+}
+
 function drawClaim(board, selection) {
   const {player, start, action, target, reflect} = selection;
   const [x1, y1] = pieceCenter(board, start);
@@ -191,11 +221,7 @@ function drawClaim(board, selection) {
         }
       }
     } else {
-      const arrow = document.createElementNS(SVG, "polygon");
-      const [bx, by] = [x2 - ux * head, y2 - uy * head];
-      const [px, py] = [-uy * head * 0.55, ux * head * 0.55];
-      arrow.setAttribute("points", `${x2},${y2} ${bx + px},${by + py} ${bx - px},${by - py}`);
-      svg.append(arrow);
+      svg.append(arrowhead(x2, y2, ux, uy, head));
     }
     board.append(svg);
 
@@ -238,6 +264,11 @@ function drawClaim(board, selection) {
 
 // abilities whose target is something attacked, rather than a square moved to
 const ATTACKS = new Set(["🀒", "🀌", "🀙", "🀛", "🀍"]);
+
+// whether an ability takes the piece to its target (a smite stays put)
+function moving(board, player, action, target) {
+  return Boolean(player) && action !== "⚡" && !isAttack(board, {player, action, target});
+}
 
 function isAttack(board, {player, action, target}) {
   // a backstabber kills an enemy behind it, but otherwise moves
@@ -298,7 +329,7 @@ function renderSelection(board, selection, highlight) {
     const [row, col] = selection.target;
     findCell(board, row, col).classList.add(CHOSEN_TARGET);
   }
-  drawTargets(board, targets, highlight?.impacts ?? {});
+  drawTargets(board, targets, highlight?.impacts ?? {}, selection ?? {});
 }
 
 export {renderSelection, option};

@@ -986,6 +986,10 @@ selection; colour only ever says whose piece it is
   stroke: var(--bg);
   stroke-width: 2cqmin;
 }
+/* the move a hovered ability would make */
+.claim-line.ghost-move {
+  opacity: 0.4;
+}
 /* what a hovered blast or ram would do: the area it covers, the tiles it would kill,
    and where it would knock the others */
 .impact {
