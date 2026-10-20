@@ -33,6 +33,8 @@
   --hover: #f4f4f4;
   --on-strong: white;
   --primary-hover: #1a4399;
+  --selected: var(--ink);
+  --on-selected: var(--on-strong);
   --scrim: rgba(255, 255, 255, 0.82);
   --shadow: rgba(0, 0, 0, 0.12);
   --dim-tile: #555555;
@@ -57,6 +59,9 @@
   --hover: #272b32;
   --on-strong: #131518;
   --primary-hover: #a7c0ff;
+  /* a solid light block glares on the dark table, so a chosen option is a lifted grey */
+  --selected: #464b55;
+  --on-selected: var(--ink);
   --scrim: rgba(19, 21, 24, 0.85);
   --shadow: rgba(0, 0, 0, 0.55);
   --dim-tile: #9da1a8;
@@ -363,8 +368,8 @@ the tiles between.
   border-left: none;
 }
 .segmented button.on {
-  color: var(--on-strong);
-  background-color: var(--ink);
+  color: var(--on-selected);
+  background-color: var(--selected);
 }
 .segmented button:disabled {
   cursor: default;
