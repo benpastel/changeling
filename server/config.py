@@ -38,9 +38,9 @@ POSSIBLE_TILES = [
     Tile.RAM,
 ]
 # every tile that can be chosen for a game, in the order they are listed
-ALL_TILES = POSSIBLE_TILES + [Tile.SPIDER]
+ALL_TILES = POSSIBLE_TILES + [Tile.SPIDER, Tile.ICE_MAGE]
 # still played by the server when asked for, but not offered at the table for now
-HELD_BACK = [Tile.BACKSTABBER, Tile.TRICKSTER]
+HELD_BACK = [Tile.BACKSTABBER]
 
 # how many tile types are in each game; there are 3 copies of each
 TILES_PER_GAME = 5

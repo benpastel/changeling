@@ -31,6 +31,7 @@ from server.actions import (
     valid_targets,
     _explosion_hits,
     _take_ram_action,
+    ice_ring,
 )
 from server.constants import (
     Action,
@@ -63,6 +64,7 @@ HARMFUL = {
     Tile.RAM,
     Tile.HOOK,
     Tile.THIEF,
+    Tile.ICE_MAGE,
 }
 # roughly how good each tile is to hold, in coins, before what it can do right now
 TILE_WORTH = {
@@ -76,7 +78,7 @@ TILE_WORTH = {
     Tile.FLOWER: 1.5,
     Tile.BIRD: 1.5,
     Tile.RAM: 1.5,
-    Tile.TRICKSTER: 1,
+    Tile.ICE_MAGE: 1.5,
     Tile.SPIDER: 1,
 }
 
@@ -233,20 +235,8 @@ def lie_chance(view: State, me: Player, piece: int, tile: Tile, read: Counter) -
 
 def _sim(view: State, actor: Player) -> State:
     """A copy of the view to play an action out on, with `actor` to move."""
-    return view.model_copy(
-        update={
-            "positions": {p: list(v) for p, v in view.positions.items()},
-            "piece_ids": {p: list(v) for p, v in view.piece_ids.items()},
-            "coins": dict(view.coins),
-            "tiles_on_board": {p: list(v) for p, v in view.tiles_on_board.items()},
-            "tiles_on_board_revealed": {
-                p: list(v) for p, v in view.tiles_on_board_revealed.items()
-            },
-            "webs": {p: list(v) for p, v in view.webs.items()},
-            "unused_revealed": {p: list(v) for p, v in view.unused_revealed.items()},
-            "current_player": actor,
-            "other_player": other_player(actor),
-        }
+    return view.scratch().model_copy(
+        update={"current_player": actor, "other_player": other_player(actor)}
     )
 
 
@@ -314,6 +304,8 @@ def _enemy_hits(sim: State, start: Square, action: Action, target: Square) -> li
         return _explosion_hits(target, sim.all_positions())
     if action == Tile.RAM:
         return _take_ram_action(start, target, _sim(sim, sim.current_player))
+    if action == Tile.ICE_MAGE:
+        return [s for s in sim.all_positions() if s in ice_ring(start)]
     return []
 
 

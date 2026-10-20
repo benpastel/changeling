@@ -37,6 +37,10 @@
   --on-selected: var(--on-strong);
   /* the ghosted area a blast would cover */
   --blast: rgba(208, 52, 44, 0.14);
+  /* ice: a cold wash, with streaks of sheen */
+  --ice: #dcf0f6;
+  --ice-sheen: rgba(255, 255, 255, 0.95);
+  --frost: rgba(64, 170, 205, 0.3);
   --scrim: rgba(255, 255, 255, 0.82);
   --shadow: rgba(0, 0, 0, 0.12);
   --dim-tile: #555555;
@@ -65,6 +69,9 @@
   --selected: #464b55;
   --on-selected: var(--ink);
   --blast: rgba(255, 123, 114, 0.14);
+  --ice: #1d3640;
+  --ice-sheen: rgba(170, 225, 240, 0.16);
+  --frost: rgba(120, 205, 230, 0.25);
   --scrim: rgba(19, 21, 24, 0.85);
   --shadow: rgba(0, 0, 0, 0.55);
   --dim-tile: #9da1a8;
@@ -925,14 +932,43 @@ exchange's two tiles side by side
 .cell-marks .bonus {
   font-size: 3.7cqmin;
 }
-/* webs: a wash of the colour of whoever laid them */
-.web {
+/*
+what's been left on a square, under its tile, drawn alike: a texture over a wash.
+A web is a net in the colour of whoever laid it; ice is neutral, a cold wash with
+streaks of sheen, since it's the same for everyone.  The mini boards draw them the same
+way, at their own scale
+*/
+.cell {
+  --grain: 2.6cqmin;
+  --thread: 0.22cqmin;
+}
+.rule-square {
+  --grain: calc(var(--sq) * 0.2);
+  --thread: 1px;
+}
+.web,
+.ice {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
-.web.north { background-color: color-mix(in srgb, var(--north) 18%, transparent); }
-.web.south { background-color: color-mix(in srgb, var(--south) 18%, transparent); }
+.web.north { --web: var(--north); }
+.web.south { --web: var(--south); }
+.rule-square.webbed { --web: var(--you); }
+.web,
+.rule-square.webbed {
+  --strand: color-mix(in srgb, var(--web) 38%, transparent);
+  background:
+    repeating-linear-gradient(45deg, var(--strand) 0 var(--thread), transparent var(--thread) var(--grain)),
+    repeating-linear-gradient(-45deg, var(--strand) 0 var(--thread), transparent var(--thread) var(--grain)),
+    color-mix(in srgb, var(--web) 9%, transparent);
+}
+.ice,
+.rule-square.iced {
+  background:
+    repeating-linear-gradient(135deg, var(--ice-sheen) 0 calc(var(--thread) * 3), transparent calc(var(--thread) * 3) calc(var(--grain) * 1.4)),
+    var(--ice);
+}
 
 /*
 selection; colour only ever says whose piece it is
@@ -1002,6 +1038,9 @@ selection; colour only ever says whose piece it is
 }
 .impact-area {
   fill: var(--blast);
+}
+.impact-area.frozen {
+  fill: var(--frost);
 }
 .impact line {
   stroke-linecap: round;
@@ -1707,9 +1746,6 @@ the same place
 .rule-square.blast {
   background-color: color-mix(in srgb, var(--them) 16%, transparent);
 }
-.rule-square.webbed {
-  background-color: color-mix(in srgb, var(--you) 18%, transparent);
-}
 .rule-arrows {
   position: absolute;
   inset: 0;
@@ -1720,6 +1756,9 @@ the same place
   stroke-width: 0.07;
   stroke-linecap: round;
   pointer-events: none;
+}
+.rule-arrows.mine {
+  color: var(--you);
 }
 .rule-tile {
   font-size: calc(var(--sq) * 0.93);

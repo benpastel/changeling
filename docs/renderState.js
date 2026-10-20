@@ -11,6 +11,8 @@ import {
   EXCHANGE_MARK,
   ACTION_NAMES,
   REFERENCE,
+  WEB,
+  ICE,
 } from "./constants.js";
 
 
@@ -253,26 +255,28 @@ function renderHand(player_view) {
   }
 }
 
-function renderWebs(board, player_view) {
-  // clear all webs
+function renderTerrain(board, player_view) {
+  // what's been left on the squares: each player's webs, and anyone's ice.  A square
+  // says which, so hovering it explains (ice, if it's both)
   for (const cell of board.querySelectorAll(".cell")) {
-    const existingWeb = cell.querySelector('.web');
-    if (existingWeb) {
-      cell.removeChild(existingWeb);
+    for (const terrain of cell.querySelectorAll(".web, .ice")) {
+      terrain.remove();
     }
+    delete cell.dataset.terrain;
   }
-
-  // add webs for each player as background tints
-  for (const player of PLAYERS) {
-    const webs = player_view.webs[player];
-    for (const [r, c] of webs) {
+  const lay = (squares, className, glyph) => {
+    for (const [r, c] of squares) {
       const cell = findCell(board, r, c);
-
-      const web = document.createElement('div');
-      web.classList.add('web', player);
-      cell.appendChild(web);
+      const terrain = document.createElement("div");
+      terrain.className = className;
+      cell.prepend(terrain);
+      cell.dataset.terrain = glyph;
     }
+  };
+  for (const player of PLAYERS) {
+    lay(player_view.webs[player], `web ${player}`, WEB);
   }
+  lay(player_view.ice ?? [], "ice", ICE);
 }
 
 function renderOther(player_view) {
@@ -405,7 +409,7 @@ function renderRules(list, player_view, entries = [...player_view.tiles_in_game,
 function renderDiagram(diagram, actor) {
   // a mini board from BOARDS: each square's token is its mark, then any suffixes;
   // a diagram is its grid, or {grid, arrows}
-  const {grid, arrows = []} = Array.isArray(diagram) ? {grid: diagram} : diagram;
+  const {grid, arrows = [], mine = false} = Array.isArray(diagram) ? {grid: diagram} : diagram;
   const board = document.createElement("div");
   board.className = "rule-board";
   for (const line of grid) {
@@ -414,7 +418,8 @@ function renderDiagram(diagram, actor) {
       square.className = "rule-square";
       if (token.includes("*")) square.classList.add("blast");
       if (token.includes("W")) square.classList.add("webbed");
-      const mark = token.replace(/[*W]/g, "");
+      if (token.includes("I")) square.classList.add("iced");
+      const mark = token.replace(/[*WI]/g, "");
       const markElement = document.createElement("span");
       if (mark === "@") {
         markElement.className = "rule-tile you";
@@ -435,7 +440,9 @@ function renderDiagram(diagram, actor) {
     }
   }
   if (arrows.length) {
-    board.append(renderArrows(arrows));
+    const drawn = renderArrows(arrows);
+    drawn.classList.toggle("mine", mine);
+    board.append(drawn);
   }
   return board;
 }
@@ -478,4 +485,4 @@ function renderArrows(arrows) {
   return svg;
 }
 
-export {createBoard, renderBoard, renderLog, renderHand, findCell, renderOther, renderRules, ruleOf, renderWebs};
+export {createBoard, renderBoard, renderLog, renderHand, findCell, renderOther, renderRules, ruleOf, renderTerrain};

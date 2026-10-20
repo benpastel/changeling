@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from typing import Optional
-import random
 
 from server.state import State
 from server.constants import (
@@ -21,7 +20,6 @@ COIN_GAIN = {
     Tile.BIRD: 2,
     Tile.FLOWER: 3,
     Tile.HARVESTER: 4,
-    Tile.TRICKSTER: 1,
     Tile.BACKSTABBER: 2,
     Tile.SPIDER: 0,
 }
@@ -34,6 +32,7 @@ GRAPPLE_STEAL_AMOUNT = 2
 THIEF_STEAL_AMOUNT = 4
 BACKSTAB_COST = 3
 RAM_COST = 3
+ICE_MAGE_COST = 3
 WEB_STEAL_AMOUNT = 3
 
 
@@ -249,27 +248,6 @@ def _fireball_targets(
     ]
 
 
-def _knight_targets(start: Square, state: State) -> list[Square]:
-    """
-    Return a list of squares that are valid targets for a knight-like move.
-    """
-    targets = []
-    for row_step, col_step in [
-        (1, 2),
-        (1, -2),
-        (-1, 2),
-        (-1, -2),
-        (2, 1),
-        (2, -1),
-        (-2, 1),
-        (-2, -1),
-    ]:
-        square = Square(start.row + row_step, start.col + col_step)
-        if square.on_board():
-            targets.append(square)
-    return targets
-
-
 def valid_targets(start: Square, state: State) -> dict[Action, list[Square]]:
     """
     What are the valid actions for the current player from the start square,
@@ -313,9 +291,9 @@ def valid_targets(start: Square, state: State) -> dict[Action, list[Square]]:
     if coins >= RAM_COST:
         # to reduce misclicks, only allow ram moves that knockback an enemy
         def _hits_any_enemy(s: Square) -> bool:
-            hits = _ram_knockback_targets(start, s, state)
-            enemy_hits = set(hits) & set(enemy_positions)
-            return len(enemy_hits) > 0
+            _, pushed, killed = _ram_outcome(start, s, state)
+            hits = [knocked for knocked, _ in pushed] + killed
+            return len(set(hits) & set(enemy_positions)) > 0
 
         ram_targets = [
             s
@@ -349,13 +327,9 @@ def valid_targets(start: Square, state: State) -> dict[Action, list[Square]]:
     )
     actions[Tile.HARVESTER] = [forward] if forward in empty_targets else []
 
-    # trickster moves knight-like, whether or not there is a enemy on the target square
-    # they just can't move onto an ally
-    actions[Tile.TRICKSTER] = [
-        s
-        for s in _knight_targets(start, state)
-        if s not in state.positions[state.current_player]
-    ]
+    # the ice mage freezes the ring around itself, so it targets its own square
+    if coins >= ICE_MAGE_COST:
+        actions[Tile.ICE_MAGE] = [start]
 
     # see `grapple_end_square` for the definition of valid grapple targets
     actions[Tile.HOOK] = [
@@ -404,37 +378,34 @@ def valid_targets(start: Square, state: State) -> dict[Action, list[Square]]:
     }
 
 
-def _ram_knockback_targets(start: Square, target: Square, state: State) -> list[Square]:
-    """
-    Return a list of tiles that would be knocked back from a ram move.
-    """
-    obstructions = [s for s in state.all_positions() if s != target]
-    distances = _all_distances(target, obstructions)
-    return [s for s, d in distances.items() if d == 1 and s in obstructions]
-
-
 def _ram_outcome(
     start: Square, target: Square, state: State
-) -> tuple[list[tuple[Square, Square]], list[Square]]:
+) -> tuple[Square, list[tuple[Square, Square]], list[Square]]:
     """
-    Where a ram from start to target would knock each neighbouring tile, and which
-    tiles it would kill instead, for having nowhere to go.
+    Where a ram from start to target would end up (it may slide on ice), where it
+    would knock each neighbouring tile (which may slide too), and which tiles it would
+    kill instead, for having nowhere to go.
     """
-    # the ram has left its start for the target
-    occupied = [target if s == start else s for s in state.all_positions()]
-    obstructions = [s for s in occupied if s != target]
-    distances = _all_distances(target, obstructions)
+    # the ram has left its start for the target, and slides on from there
+    occupied = [s for s in state.all_positions() if s != start]
+    end = slide(target, _step(start, target), state.ice, occupied)
+    occupied.append(end)
+    distances = _all_distances(end, [s for s in occupied if s != end])
     pushed = []
     killed = []
-    for knocked in [s for s, d in distances.items() if d == 1 and s in obstructions]:
-        # each knocked tile goes directly away from the target; if that's obstructed,
-        # it dies
-        end_square = _knockback_end_square(target, knocked)
-        if end_square.on_board() and end_square not in obstructions:
-            pushed.append((knocked, end_square))
+    for knocked in [s for s, d in distances.items() if d == 1 and s in occupied]:
+        # each knocked tile goes directly away from the ram; if that's obstructed, it
+        # dies
+        step = _step(end, knocked)
+        knocked_to = Square(knocked.row + step[0], knocked.col + step[1])
+        if knocked_to.on_board() and knocked_to not in occupied:
+            occupied.remove(knocked)
+            knocked_to = slide(knocked_to, step, state.ice, occupied)
+            occupied.append(knocked_to)
+            pushed.append((knocked, knocked_to))
         else:
             killed.append(knocked)
-    return pushed, killed
+    return end, pushed, killed
 
 
 def _take_ram_action(start: Square, target: Square, state: State) -> list[Square]:
@@ -442,11 +413,11 @@ def _take_ram_action(start: Square, target: Square, state: State) -> list[Square
     Makes a ram move, updating state, and returning any tiles killed.
     """
     player = state.current_player
-    pushed, killed = _ram_outcome(start, target, state)
+    end, pushed, killed = _ram_outcome(start, target, state)
 
-    # move to target square
+    # move to target square, or past it on ice
     start_index = state.positions[player].index(start)
-    state.positions[player][start_index] = target
+    state.positions[player][start_index] = end
 
     # spend cost
     state.coins[player] -= RAM_COST
@@ -461,43 +432,113 @@ def _take_ram_action(start: Square, target: Square, state: State) -> list[Square
 
 @dataclass
 class Impact:
-    """What an attack on a square would do, beyond the square itself."""
+    """What an action on a square would do, if it went ahead."""
 
-    # every square a blast covers
+    # every square a blast or a freeze covers
     area: list[Square]
     # every tile that would die
     killed: list[Square]
-    # every tile that would be knocked to another square, and where to
-    pushed: list[tuple[Square, Square]]
+    # every tile that would end up on another square (the actor too), and where
+    moved: list[tuple[Square, Square]]
 
 
 def impacts(start: Square, state: State) -> dict[Action, dict[Square, Impact]]:
-    """The impact of each blast and ram the tile at start could make, by target."""
+    """The impact of everything the tile at start could do, by action and target."""
+    before = {
+        piece: square
+        for player in Player
+        for piece, square in zip(state.piece_ids[player], state.positions[player])
+    }
     found: dict[Action, dict[Square, Impact]] = {}
     for action, targets in valid_targets(start, state).items():
-        if action in (Tile.FIREBALL, Tile.GRENADES):
-            found[action] = {
-                t: Impact(
-                    [
-                        s
-                        for s in (
-                            Square(t.row + dr, t.col + dc)
-                            for dr in (-1, 0, 1)
-                            for dc in (-1, 0, 1)
-                        )
-                        if s.on_board()
-                    ],
-                    _explosion_hits(t, state.all_positions()),
-                    [],
-                )
-                for t in targets
-            }
-        elif action == Tile.RAM:
-            found[action] = {}
-            for t in targets:
-                pushed, killed = _ram_outcome(start, t, state)
-                found[action][t] = Impact([], killed, pushed)
+        found[action] = {}
+        for target in targets:
+            sim = state.scratch()
+            killed = take_action(start, action, target, sim)
+            moved = [
+                (before[piece], square)
+                for player in Player
+                for piece, square in zip(sim.piece_ids[player], sim.positions[player])
+                if before[piece] != square
+            ]
+            if action in (Tile.FIREBALL, Tile.GRENADES):
+                area = _around(target, 1)
+            elif action == Tile.ICE_MAGE:
+                area = ice_ring(start)
+            else:
+                area = []
+            found[action][target] = Impact(area, killed, moved)
     return found
+
+
+def _around(center: Square, distance: int) -> list[Square]:
+    """Every square on the board within `distance` of center, straight or diagonal."""
+    return [
+        square
+        for row in range(center.row - distance, center.row + distance + 1)
+        for col in range(center.col - distance, center.col + distance + 1)
+        if (square := Square(row, col)).on_board()
+    ]
+
+
+def ice_ring(center: Square) -> list[Square]:
+    """The squares an ice mage freezes: the edge of the 5x5 square around it."""
+    return [s for s in _around(center, 2) if s not in _around(center, 1)]
+
+
+def _step(start: Square, target: Square) -> tuple[int, int]:
+    """
+    The last single step (straight or diagonal) of a move from start to target, the
+    way a tile landing on ice keeps going; see `path`.
+    """
+    squares = [start] + path(start, target)
+    if len(squares) < 2:
+        return (0, 0)
+    before, after = squares[-2], squares[-1]
+    return (after.row - before.row, after.col - before.col)
+
+
+def slide(
+    square: Square, step: tuple[int, int], ice: list[Square], occupied: list[Square]
+) -> Square:
+    """
+    Where a tile that has just moved onto `square`, going `step` at a time, comes to
+    rest: on ice it keeps going, until it's off the ice or the next square is off the
+    board or taken.
+    """
+    if step == (0, 0):
+        return square
+    while square in ice:
+        after = Square(square.row + step[0], square.col + step[1])
+        if not after.on_board() or after in occupied:
+            break
+        square = after
+    return square
+
+
+def _move(state: State, player: Player, start: Square, target: Square) -> Square:
+    """Move the player's tile at start onto target, and on along any ice."""
+    index = state.positions[player].index(start)
+    state.positions[player][index] = target
+    end = slide(target, _step(start, target), state.ice, state.all_positions())
+    state.positions[player][index] = end
+    return end
+
+
+def _swap(state: State, start: Square, target: Square) -> None:
+    """Swap the tiles at start and target, each sliding on along any ice."""
+    start_player = state.player_at(start)
+    target_player = state.player_at(target)
+    start_index = state.positions[start_player].index(start)
+    target_index = state.positions[target_player].index(target)
+    state.positions[start_player][start_index] = target
+    state.positions[target_player][target_index] = start
+    state.positions[start_player][start_index] = slide(
+        target, _step(start, target), state.ice, state.all_positions()
+    )
+    state.positions[target_player][target_index] = slide(
+        start, _step(target, start), state.ice, state.all_positions()
+    )
 
 
 def take_action(
@@ -513,14 +554,6 @@ def take_action(
     enemy = state.other_player
     repeats = 2 if state.x2_tile == action else 1
 
-    # spider lays web on all traveled squares
-    if action == Tile.SPIDER:
-        if start not in state.webs[state.current_player]:
-            state.webs[state.current_player].append(start)
-        for square in path(start, target):
-            if square not in state.webs[state.current_player]:
-                state.webs[state.current_player].append(square)
-
     if action in (
         OtherAction.MOVE,
         Tile.FLOWER,
@@ -528,9 +561,14 @@ def take_action(
         Tile.HARVESTER,
         Tile.SPIDER,
     ) or (action == Tile.BACKSTABBER and state.maybe_player_at(target) is None):
-        # move to the target square
-        start_index = state.positions[player].index(start)
-        state.positions[player][start_index] = target
+        # move to the target square, and on along any ice
+        end = _move(state, player, start, target)
+
+        # spider lays web on all traveled squares
+        if action == Tile.SPIDER:
+            for square in [start] + path(start, end):
+                if square not in state.webs[player]:
+                    state.webs[player].append(square)
 
         # gain coins
         state.coins[player] += COIN_GAIN[action] * repeats
@@ -543,31 +581,6 @@ def take_action(
         # kill nobody
         return []
 
-    if action == Tile.TRICKSTER:
-        if state.maybe_player_at(target) is not None:
-            # swap identities with target
-            state.swap_identity(start, target)
-
-            # bump target to random adjacent unoccupied square
-            target_index = state.positions[enemy].index(target)
-
-            obstructions = [s for s in state.all_positions() if s != target]
-            distances = _all_distances(target, obstructions)
-            bump_candidates = [
-                s for s, d in distances.items() if s not in obstructions and d == 1
-            ]
-            assert len(bump_candidates) > 0
-            bump_target = random.choice(bump_candidates)
-            state.positions[enemy][target_index] = bump_target
-
-        # move to the target square
-        start_index = state.positions[player].index(start)
-        state.positions[player][start_index] = target
-
-        # gain coins
-        state.coins[player] += COIN_GAIN[Tile.TRICKSTER] * repeats
-        return []
-
     if action == Tile.RAM:
         return _take_ram_action(start, target, state)
 
@@ -575,8 +588,7 @@ def take_action(
         # move target next to us
         end_square = grapple_end_square(start, target, obstructions=[])
         assert end_square
-        target_index = state.positions[enemy].index(target)
-        state.positions[enemy][target_index] = end_square
+        _move(state, enemy, target, end_square)
 
         # steal
         if NEGATIVE_COINS_OK:
@@ -591,12 +603,7 @@ def take_action(
 
     if action == Tile.THIEF:
         # swap places with target
-        start_index = state.positions[player].index(start)
-        target_index = state.positions[enemy].index(target)
-        start_square = state.positions[player][start_index]
-        target_square = state.positions[enemy][target_index]
-        state.positions[player][start_index] = target_square
-        state.positions[enemy][target_index] = start_square
+        _swap(state, start, target)
 
         # steal
         if NEGATIVE_COINS_OK:
@@ -630,6 +637,15 @@ def take_action(
         for web in _explosion_hits(target, state.webs[enemy]):
             state.webs[enemy].remove(web)
         return _explosion_hits(target, state.all_positions())
+
+    if action == Tile.ICE_MAGE:
+        # pay cost
+        state.coins[player] -= ICE_MAGE_COST
+
+        # ice the ring, and kill everything on it, own tiles too
+        ring = ice_ring(start)
+        state.ice += [square for square in ring if square not in state.ice]
+        return [square for square in state.all_positions() if square in ring]
 
     if action == Tile.KNIVES:
         # cost depends on distance to target
@@ -675,8 +691,7 @@ def reflect_action(
         # move start next to target
         end_square = grapple_end_square(target, start, obstructions=[])
         assert end_square
-        start_index = state.positions[player].index(start)
-        state.positions[player][start_index] = end_square
+        _move(state, player, start, end_square)
 
         # steal; same as original action with players swapped
         if NEGATIVE_COINS_OK:
@@ -691,12 +706,7 @@ def reflect_action(
 
     if action == Tile.THIEF:
         # swap places with target; same as original action
-        start_index = state.positions[player].index(start)
-        target_index = state.positions[enemy].index(target)
-        start_square = state.positions[player][start_index]
-        target_square = state.positions[enemy][target_index]
-        state.positions[player][start_index] = target_square
-        state.positions[enemy][target_index] = start_square
+        _swap(state, start, target)
 
         # steal; same as original action with players swapped
         if NEGATIVE_COINS_OK:

@@ -91,10 +91,9 @@ class Tile(str, Enum):
     # OR: move 2, gain $1
     BACKSTABBER = "🀇"
 
-    # move knight-like, gain $1
-    # if you land on an enemy, switch identities
-    # and bump them to a random adjacent unoccupied square
-    TRICKSTER = "🀩"
+    # ice mage: $3 to kill everything in the ring 2 squares away, own tiles too, and ice it
+    # a tile moving onto ice slides on the same way until it's off the ice or blocked
+    ICE_MAGE = "🀩"
 
     # steal $4, swap places with target
     THIEF = "🀌"

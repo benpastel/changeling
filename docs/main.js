@@ -10,7 +10,7 @@ import {
   renderOther,
   renderRules,
   ruleOf,
-  renderWebs,
+  renderTerrain,
 } from "./renderState.js";
 
 import {ACTION_NAMES, REFERENCE} from "./constants.js";
@@ -130,7 +130,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const before = snapshot(board);
     renderBoard(board, player_view);
     renderLog(log, player_view);
-    renderWebs(board, player_view);
+    renderTerrain(board, player_view);
     renderHand(player_view);
     renderOther(player_view);
     redrawSelection();
@@ -265,8 +265,8 @@ window.addEventListener("DOMContentLoaded", () => {
       return null;
     }
     for (let element = target; element && element !== document.body; element = element.parentElement) {
-      const {name, tileName, tile} = element.dataset;
-      const glyph = name ?? tileName ?? tile ?? (element.children.length === 0 ? element.textContent.trim() : "");
+      const {name, tileName, tile, terrain} = element.dataset;
+      const glyph = name ?? tileName ?? tile ?? terrain ?? (element.children.length === 0 ? element.textContent.trim() : "");
       if (glyph in REFERENCE) {
         return {element, glyph};
       }

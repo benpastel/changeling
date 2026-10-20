@@ -122,7 +122,11 @@ class State(BaseModel):
     # if an opponent passes through, they'll lose their next turn (doesn't stack)
     webs: dict[Player, list[Square]]
     skip_next_turn: dict[Player, bool]
-    go_again: bool  # when a spider exchanges, the current player may go again
+    go_again: bool
+
+    # Iced squares, left by ice; anyone's tile moving onto one slides on (see
+    # actions.slide).  Ice never melts.
+    ice: list[Square] = []  # when a spider exchanges, the current player may go again
 
     # log of public information, grouped by turn
     public_log: list[LogTurn]
@@ -372,6 +376,7 @@ class State(BaseModel):
             other_player=self.other_player,
             coins=self.coins,
             webs=self.webs,
+            ice=self.ice,
             skip_next_turn=self.skip_next_turn,
             go_again=self.go_again,
             match_score=self.match_score,
@@ -455,28 +460,24 @@ class State(BaseModel):
         self.game_score[player] += 1
         self.match_score[player] += 1
 
-    def swap_identity(self, start: Square, target: Square) -> None:
-        """
-        Swap the identities of two tiles at the given positions and make both visible.
-        """
-        # The squares should belong to different players
-        start_player = self.player_at(start)
-        target_player = self.player_at(target)
-        assert start_player != target_player
-
-        # Get indices of both tiles
-        start_idx = self.positions[start_player].index(start)
-        target_idx = self.positions[target_player].index(target)
-
-        # Swap the identities
-        start_identity = self.tiles_on_board[start_player][start_idx]
-        target_identity = self.tiles_on_board[target_player][target_idx]
-        self.tiles_on_board[start_player][start_idx] = target_identity
-        self.tiles_on_board[target_player][target_idx] = start_identity
-
-        # Make both tiles visible to both players
-        self.tiles_on_board_revealed[start_player][start_idx] = True
-        self.tiles_on_board_revealed[target_player][target_idx] = True
+    def scratch(self) -> "State":
+        """A copy to play actions out on, without touching this one (or its log)."""
+        return self.model_copy(
+            update={
+                "positions": {p: list(v) for p, v in self.positions.items()},
+                "piece_ids": {p: list(v) for p, v in self.piece_ids.items()},
+                "coins": dict(self.coins),
+                "tiles_on_board": {p: list(v) for p, v in self.tiles_on_board.items()},
+                "tiles_on_board_revealed": {
+                    p: list(v) for p, v in self.tiles_on_board_revealed.items()
+                },
+                "webs": {p: list(v) for p, v in self.webs.items()},
+                "ice": list(self.ice),
+                "unused_revealed": {
+                    p: list(v) for p, v in self.unused_revealed.items()
+                },
+            }
+        )
 
 
 def new_state(

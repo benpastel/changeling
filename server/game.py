@@ -10,7 +10,6 @@ from server.actions import (
     impacts,
     take_action,
     reflect_action,
-    grapple_end_square,
     path,
 )
 from server.state import new_state, State, LogKind, LogEvent
@@ -201,6 +200,7 @@ async def _resolve_action(
     claim, reflect, or move that caused it.
     """
     repeats = 2 if state.x2_tile == action else 1
+    before = _squares_by_piece(state)
 
     # `hits` is a possibly-empty list of tiles hit by the action
     coins_before = dict(state.coins)
@@ -213,6 +213,15 @@ async def _resolve_action(
         for player in Player
         if state.coins[player] != coins_before[player]
     }
+    # every tile that moved, by moving, being pulled, or swapping, and maybe sliding on
+    # along ice; tiles a ram knocks back are just shoved, and don't count
+    moved = [
+        (player, before[player][piece], square)
+        for player, by_piece in _squares_by_piece(state).items()
+        for piece, square in by_piece.items()
+        if square != before[player][piece]
+        and not (action == Tile.RAM and before[player][piece] != start)
+    ]
 
     for _ in range(repeats):
         for hit in hits:
@@ -220,51 +229,23 @@ async def _resolve_action(
 
         await clear_selection(players)
 
-    # we may have moved onto a special square or web; a backstabber that killed
-    # stayed where it was
-    backstabbed = action == Tile.BACKSTABBER and state.maybe_player_at(target) != (
-        state.current_player
-    )
-    if not backstabbed and action in (
-        OtherAction.MOVE,
-        Tile.FLOWER,
-        Tile.BIRD,
-        Tile.TRICKSTER,
-        Tile.HARVESTER,
-        Tile.RAM,
-        Tile.BACKSTABBER,
-        Tile.SPIDER,
-    ):
-        await _check_special_square(target, state, players)
-        await _check_web(start, target, state, moving_player=state.current_player)
-
-    # hook may have pulled someone onto one, or dragged someone across a web
-    if action == Tile.HOOK:
-        if reflect:
-            # player moved
-            moving_player = state.current_player
-            end_square = grapple_end_square(target, start, obstructions=[])
-        else:
-            # enemy moved
-            moving_player = state.other_player
-            end_square = grapple_end_square(start, target, obstructions=[])
-        assert end_square is not None
-        await _check_special_square(end_square, state, players)
-        await _check_web(start, target, state, moving_player)
-
-    # thief swaps positions, which might move either player onto one
-    if action == Tile.THIEF:
-        await _check_special_square(start, state, players)
-        await _check_special_square(target, state, players)
-
-        # current player moved to target
-        await _check_web(start, target, state, moving_player=state.current_player)
-        # other player moved to start
-        await _check_web(target, start, state, moving_player=state.other_player)
+    # they may have moved onto a special square, or across a web
+    for player, from_square, to_square in moved:
+        await _check_special_square(to_square, state, players)
+        await _check_web(from_square, to_square, state, moving_player=player)
 
     # spider goes again after exchange
-    if action == Tile.SPIDER and target in state.exchange_positions:
+    if action == Tile.SPIDER and any(
+        to_square in state.exchange_positions for _, _, to_square in moved
+    ):
         state.go_again = True
+
+
+def _squares_by_piece(state: State) -> dict[Player, dict[int, Square]]:
+    return {
+        player: dict(zip(state.piece_ids[player], state.positions[player]))
+        for player in Player
+    }
 
 
 def _random_move(state: State) -> tuple[Square, Action, Square]:

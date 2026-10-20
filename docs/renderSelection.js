@@ -8,8 +8,9 @@
 //    annotated with the claimed ability.  A reflect is added to the note; the answers
 //    to a claim are offered beside it (see renderChoice.js).
 //  - A target picked on its own (the tile a player is about to lose) is a pick.
-//  - Hovering a blast or a ram's option ghosts what it would do: the blast's area
-//    tinted, a cross on every tile that would die, an arrow on every tile knocked back.
+//  - Hovering an option ghosts what it would do: the piece's move (sliding on along
+//    any ice), an arrow on every other tile it would shift, a cross on every tile that
+//    would die, and the area a blast or a freeze covers.
 
 import {
   CHOSEN_START,
@@ -78,18 +79,12 @@ function drawTargets(board, targets, impacts, selection) {
     for (const action of actions) {
       const element = option(action);
       const impact = impacts[action]?.find(({target}) => target[0] === row && target[1] === col);
-      const moves = selection.start && moving(board, selection.player, action, [row, col]);
-      if (impact || moves) {
+      if (impact && selection.start) {
         // mouseover, not mouseenter, so it's drawn before the tooltip places itself
         // clear of it
         element.addEventListener("mouseover", () => {
           clearImpact(board);
-          if (moves) {
-            drawMove(board, selection.player, selection.start, [row, col]);
-          }
-          if (impact) {
-            drawImpact(board, impact);
-          }
+          drawImpact(board, selection, action, impact);
         });
         element.addEventListener("mouseout", () => clearImpact(board));
       }
@@ -107,7 +102,13 @@ function svgElement(name, attributes) {
   return element;
 }
 
-function drawImpact(board, {area, killed, pushed}) {
+function drawImpact(board, {player, start}, action, {area, killed, moved}) {
+  const sameSquare = (a, b) => a[0] === b[0] && a[1] === b[1];
+  const mover = moved.find(([from]) => sameSquare(from, start));
+  if (mover) {
+    drawMove(board, player, ...mover);
+  }
+  const pushed = moved.filter((move) => move !== mover);
   const svg = document.createElementNS(SVG, "svg");
   svg.classList.add("impact");
   const origin = board.getBoundingClientRect();
@@ -115,7 +116,7 @@ function drawImpact(board, {area, killed, pushed}) {
   for (const [row, col] of area) {
     const cell = findCell(board, row, col).getBoundingClientRect();
     svg.append(svgElement("rect", {
-      class: "impact-area",
+      class: action === "🀩" ? "impact-area frozen" : "impact-area",
       x: cell.left - origin.left, y: cell.top - origin.top,
       width: cell.width, height: cell.height,
     }));
@@ -264,11 +265,6 @@ function drawClaim(board, selection) {
 
 // abilities whose target is something attacked, rather than a square moved to
 const ATTACKS = new Set(["🀒", "🀌", "🀙", "🀛", "🀍"]);
-
-// whether an ability takes the piece to its target (a smite stays put)
-function moving(board, player, action, target) {
-  return Boolean(player) && action !== "⚡" && !isAttack(board, {player, action, target});
-}
 
 function isAttack(board, {player, action, target}) {
   // a backstabber kills an enemy behind it, but otherwise moves

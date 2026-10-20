@@ -24,7 +24,7 @@ const TILES = {
   "🀗": "🀗", // spider
   "🀇": "🀇", // backstabber
   "🀙": "🀙", // fireball
-  "🀩": "🀩", // trickster
+  "🀩": "🀩", // ice mage
   "🀎": "🀎", // ram
   "🀌": "🀌", // thief
 };
@@ -54,12 +54,15 @@ const ALL_TILES = [
   ["🀍", "HOOK"],
   ["🀎", "RAM"],
   ["🀗", "SPIDER"],
+  ["🀩", "ICE MAGE"],
 ];
 // still played by the server, but not offered at the table for now
 const HELD_BACK = [
   ["🀇", "BACKSTABBER"],
-  ["🀩", "TRICKSTER"],
 ];
+// squares a tile has changed: a spider's web, and an ice mage's ice
+const WEB = "▦";
+const ICE = "❄";
 // names shown under the action panel buttons
 const ACTION_NAMES = {
   "↕": "MOVE",
@@ -68,14 +71,17 @@ const ACTION_NAMES = {
   ...Object.fromEntries(HELD_BACK),
   "✓": "ACCEPT",
   "🚩": "CHALLENGE",
+  [WEB]: "WEB",
+  [ICE]: "ICE",
 };
 // mini boards for the reference, drawn from your side (forward is up).  Each square is
 // a token:
 //   .  empty           @  the acting tile        g  where it started (dashed)
 //   o  it can move here    x  it can hit an enemy here    E  an enemy tile
 //   ↖ ↑ ↗ ← → ↙ ↘  a tile pushed or pulled that way
-// with suffixes  *  inside an explosion   W  a web.  A board is its grid, or {grid,
-// arrows}, an arrow being [from row, from column, to row, to column].
+// with suffixes  *  inside an explosion   W  a web   I  ice.  A board is its grid, or
+// {grid, arrows, mine}, an arrow being [from row, from column, to row, to column];
+// arrows are an enemy's being moved, or with `mine`, your own tile's.
 const BOARDS = {
   step: [
     ". . . . .",
@@ -171,23 +177,6 @@ const BOARDS = {
     ". ↙ g ↘ .",
     ". . . . .",
   ],
-  knight: [
-    ". o . o .",
-    "o . . . o",
-    ". . @ . .",
-    "o . . . o",
-    ". o . o .",
-  ],
-  swap: {
-    grid: [
-      ". . . E .",
-      ". . . . .",
-      ". . @ . .",
-      ". . . . .",
-      ". . . . .",
-    ],
-    arrows: [[2, 2, 0, 3]],
-  },
   web: [
     ". . . . .",
     ". . @W . .",
@@ -195,6 +184,48 @@ const BOARDS = {
     ". . gW . .",
     ". . . . .",
   ],
+  // an enemy crossing a web
+  webbed: {
+    grid: [
+      ". . . . .",
+      ". . . . .",
+      "E W W . .",
+      ". . . . .",
+      ". . . . .",
+    ],
+    arrows: [[2, 0, 2, 3]],
+  },
+  freeze: [
+    "xI xI xI xI xI",
+    "xI . . . xI",
+    "xI . @ . xI",
+    "xI . . . xI",
+    "xI xI xI xI xI",
+  ],
+  // a step onto ice, sliding on until off it
+  slide: {
+    grid: [
+      ". . . . .",
+      ". . . . .",
+      "g I I I @",
+      ". . . . .",
+      ". . . . .",
+    ],
+    arrows: [[2, 0, 2, 4]],
+    mine: true,
+  },
+  // or until the next square is taken
+  slideBlocked: {
+    grid: [
+      ". . . . .",
+      ". . . . .",
+      "g I I @I E",
+      ". . . . .",
+      ". . . . .",
+    ],
+    arrows: [[2, 0, 2, 3]],
+    mine: true,
+  },
 };
 
 // what each tile, moving, smiting, and each answer to a claim does: its uses, and
@@ -260,24 +291,40 @@ const REFERENCE = {
       boards: [BOARDS.ram],
     }],
   },
-  "🀩": {
-    uses: [
-      {label: "move", gain: 1, lines: ["move like a knight"], boards: [BOARDS.knight]},
-      {
-        label: "swap",
-        gain: 1,
-        lines: ["land on an enemy", "swap identities with it", "it's bumped to a random adjacent square"],
-        boards: [BOARDS.swap],
-      },
-    ],
-  },
   "🀗": {
     uses: [{label: "move", lines: ["move up to 2", "leave webs where you went"], boards: [BOARDS.web]}],
     notes: [
-      ["▦", "an enemy crossing a web loses a turn"],
-      ["▦", "webs block fireballs; fireballs and grenades clear them"],
+      [WEB, "an enemy crossing a web loses a turn"],
+      [WEB, "webs block fireballs; fireballs and grenades clear them"],
       ["↻", "go again after an exchange"],
     ],
+  },
+  "🀩": {
+    uses: [{
+      label: "freeze",
+      cost: 3,
+      lines: ["kill every tile 2 away, yours too", "ice those squares"],
+      boards: [BOARDS.freeze],
+    }],
+    notes: [[ICE, "a tile moving onto ice slides on the same way, until it's off the ice or the next square is taken"]],
+  },
+  // what's on a square, rather than a tile
+  [WEB]: {
+    uses: [{
+      lines: ["laid by a spider", "an enemy crossing it loses a turn", "blocks fireballs; fireballs and grenades clear it"],
+      boards: [BOARDS.webbed],
+    }],
+  },
+  [ICE]: {
+    uses: [{
+      lines: [
+        "left by an ice mage",
+        "a tile moving onto it slides on the same way",
+        "until it's off the ice, or the next square is taken or off the board",
+      ],
+      boards: [BOARDS.slide, BOARDS.slideBlocked],
+      captions: ["off the ice", "or blocked"],
+    }],
   },
   "↕": {uses: [{label: "move", gain: 1, lines: ["move 1 in any direction"], boards: [BOARDS.step]}]},
   "⚡": {
@@ -321,6 +368,8 @@ export {
   HIDDEN_TILE,
   ALL_TILES,
   ACTION_NAMES,
+  WEB,
+  ICE,
   REFERENCE,
   TILES_PER_GAME,
 };

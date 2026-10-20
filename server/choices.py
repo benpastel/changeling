@@ -119,14 +119,14 @@ async def _send_highlights(
         "targets": {
             action.value: squares for action, squares in (targets or {}).items()
         },
-        # what each blast and ram would hit, for drawing it while its option is hovered
+        # what each option would do, for drawing it while the option is hovered
         "impacts": {
             action.value: [
                 {
                     "target": target,
                     "area": impact.area,
                     "killed": impact.killed,
-                    "pushed": impact.pushed,
+                    "moved": impact.moved,
                 }
                 for target, impact in by_target.items()
             ]
