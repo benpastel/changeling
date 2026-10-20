@@ -342,10 +342,10 @@ const REFERENCE = {
     uses: [{
       label: "shine",
       cost: 1,
-      lines: ["shine a beam straight up, down, left, or right, to the edge", "reveal every tile it crosses, yours too"],
+      lines: ["reveal tiles in a straight line"],
       boards: [BOARDS.beam],
     }],
-    notes: [[REFLECTED, "reflected by sunbeam, by the first tile it reaches"]],
+    notes: [[REFLECTED, "reflected by sunbeam"]],
   },
   // what's on a square, rather than a tile
   [WEB]: {
