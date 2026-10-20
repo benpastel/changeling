@@ -186,17 +186,6 @@ const BOARDS = {
     ". . gW . .",
     ". . . . .",
   ],
-  // an enemy crossing a web
-  webbed: {
-    grid: [
-      ". . . . .",
-      ". . . . .",
-      "E W W . .",
-      ". . . . .",
-      ". . . . .",
-    ],
-    arrows: [[2, 0, 2, 3]],
-  },
   freeze: [
     "xI xI xI xI xI",
     "xI . . . xI",
@@ -316,7 +305,6 @@ const REFERENCE = {
           "an enemy crossing a web loses their next turn, held until then",
           "webs block fireballs; fireballs and grenades clear them",
         ],
-        boards: [BOARDS.webbed],
       },
     ],
   },
@@ -351,7 +339,6 @@ const REFERENCE = {
         "an enemy crossing it loses their next turn, held until then",
         "blocks fireballs; fireballs and grenades clear it",
       ],
-      boards: [BOARDS.webbed],
     }],
   },
   [ICE]: {
