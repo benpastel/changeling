@@ -19,6 +19,7 @@ import asyncio
 import json
 import random
 import time
+import uuid
 from dataclasses import dataclass, field
 
 from websockets.exceptions import ConnectionClosed
@@ -124,7 +125,7 @@ class Lobby:
         """A socket introduced itself.  Returning users keep their table and seat."""
         user = self.users.get(user_id) if isinstance(user_id, str) else None
         if user is None:
-            user = User(id=_random_id(16), name=_clean_name(name))
+            user = User(id=str(uuid.uuid4()), name=_clean_name(name))
             self.users[user.id] = user
         elif _clean_name(name):
             user.name = _clean_name(name)
