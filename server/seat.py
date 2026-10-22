@@ -22,6 +22,7 @@ _REPLAYED = [
     OutEventType.HIGHLIGHT_CHANGE,
     OutEventType.PROMPT,
     OutEventType.CLOCK,
+    OutEventType.PAUSE,
     OutEventType.MATCH_CHANGE,
 ]
 

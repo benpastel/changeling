@@ -44,6 +44,9 @@
   /* the line a sunbeam would light */
   --sun: rgba(240, 180, 30, 0.3);
   --scrim: rgba(255, 255, 255, 0.82);
+  /* the tutorial's shade over all but what it's showing, and the rings around those */
+  --guide-shade: rgba(20, 20, 20, 0.5);
+  --guide-ring: white;
   --shadow: rgba(0, 0, 0, 0.12);
   --dim-tile: #555555;
   --back: #555555;
@@ -76,6 +79,8 @@
   --frost: rgba(120, 205, 230, 0.25);
   --sun: rgba(255, 205, 80, 0.2);
   --scrim: rgba(19, 21, 24, 0.85);
+  --guide-shade: rgba(0, 0, 0, 0.62);
+  --guide-ring: var(--ink);
   --shadow: rgba(0, 0, 0, 0.55);
   --dim-tile: #9da1a8;
   /* face-down grey tiles are solid, so they're kept quieter than the outlined ones */
@@ -1403,6 +1408,121 @@ the same place
   width: 9px;
   height: 12px;
 }
+
+/* ----------------------------------------------------------------- guide */
+/*
+  The tutorial's steps and the first-time tips (see guide.js): a card like the choice
+  panel's, pointing at what it's about, which is ringed.  The tutorial also shades the
+  rest and takes the clicks; a tip leaves the game alone.
+*/
+.guide {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+.guide[hidden] {
+  display: none;
+}
+.guide.dim {
+  pointer-events: auto;
+}
+.guide-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: var(--guide-shade);
+  display: none;
+}
+.guide.dim .guide-shade {
+  display: block;
+}
+.guide-ring {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+}
+.guide.dim .guide-ring {
+  border-color: var(--guide-ring);
+}
+.guide-card {
+  position: absolute;
+  box-sizing: border-box;
+  width: min(300px, calc(100vw - 20px));
+  padding: 12px 14px 10px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--ink);
+  background-color: var(--surface);
+  border: 1.5px solid var(--frame);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px var(--shadow);
+  pointer-events: auto;
+}
+/* Tenor Sans has no bold, so emphasis is stroked, as elsewhere */
+.guide-text b {
+  font-weight: normal;
+  -webkit-text-stroke: var(--bold) currentColor;
+}
+.guide-buttons {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+.guide-primary,
+.guide-secondary {
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.guide-primary {
+  height: 30px;
+  padding: 0 14px;
+  color: var(--on-strong);
+  background-color: var(--you);
+  border: 1px solid var(--you);
+}
+.guide-primary:hover {
+  background-color: var(--primary-hover);
+}
+.guide-secondary {
+  margin-right: auto;
+  padding: 0;
+  color: var(--muted);
+  background: none;
+  border: none;
+}
+.guide-secondary:hover {
+  color: var(--ink);
+}
+/* the pointer: a corner of the card's own border, turned toward what it's about */
+.guide-card::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background-color: var(--surface);
+  border: 1.5px solid var(--frame);
+  border-top: 0;
+  border-left: 0;
+  display: none;
+}
+.guide-card.above::after,
+.guide-card.below::after,
+.guide-card.left::after,
+.guide-card.right::after {
+  display: block;
+}
+.guide-card.above::after { left: calc(var(--point) - 7.5px); bottom: -7.5px; transform: rotate(45deg); }
+.guide-card.below::after { left: calc(var(--point) - 7.5px); top: -7.5px; transform: rotate(225deg); }
+.guide-card.right::after { top: calc(var(--point) - 7.5px); left: -7.5px; transform: rotate(135deg); }
+.guide-card.left::after { top: calc(var(--point) - 7.5px); right: -7.5px; transform: rotate(-45deg); }
 
 /* ------------------------------------------------------------------- log */
 .side {

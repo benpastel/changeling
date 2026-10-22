@@ -191,3 +191,6 @@ class OutEventType(str, Enum):
     MATCH_CHANGE = "MATCH_CHANGE"
 
     CLOCK = "CLOCK"
+
+    # who has paused the match (see clock.Pause)
+    PAUSE = "PAUSE"

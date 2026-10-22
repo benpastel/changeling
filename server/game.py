@@ -27,7 +27,7 @@ from server.constants import (
     other_player,
 )
 from server.choices import send_prompt, send_waiting
-from server.clock import start_clock, decide
+from server.clock import Pause, start_clock, decide
 from server.notify import (
     broadcast_state_changed,
     notify_selection_changed,
@@ -853,12 +853,13 @@ async def play_one_game(
     first_player: Player,
     names: dict[Player, str],
     time_mode: str,
+    pause: Pause | None = None,
 ) -> tuple[dict[Player, int], GameResult]:
     """
     Play one game between the seated players.
 
     `tiles` is the set of tiles in use, or None to randomize it.  `time_mode` is one of
-    clock.TIME_MODES.
+    clock.TIME_MODES.  The game holds still while `pause` is paused.
 
     Returns the game score and result.
     """
@@ -870,7 +871,7 @@ async def play_one_game(
             agent.start_game(state, player)
     await broadcast_state_changed(state, players)
     clock = start_clock(
-        time_mode, {player: agent.seat for player, agent in players.items()}
+        time_mode, {player: agent.seat for player, agent in players.items()}, pause
     )
     if clock is not None:
         await clock.send(None, 0)
@@ -911,6 +912,7 @@ async def play_one_match(
     names: dict[Player, str],
     time_mode: str,
     tally: Tally,
+    pause: Pause | None = None,
 ) -> None:
     """
     Play games in a loop, adding each to `tally` and showing both players how it went,
@@ -919,7 +921,13 @@ async def play_one_match(
     print(f"New match with {names}")
     while True:
         game_score, result = await play_one_game(
-            tally.points.copy(), players, tiles, tally.first_player, names, time_mode
+            tally.points.copy(),
+            players,
+            tiles,
+            tally.first_player,
+            names,
+            time_mode,
+            pause,
         )
         winner = {GameResult.NORTH_WINS: Player.N, GameResult.SOUTH_WINS: Player.S}.get(
             result

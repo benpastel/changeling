@@ -26,6 +26,9 @@ import {setUpTooltips} from "./tooltip.js";
 
 import {highlightSquares} from "./renderHighlights.js";
 
+import {Guide} from "./guide.js";
+import {setUpTutorial} from "./tutorial.js";
+
 import {setUpLobby, renderLobby, renderRoom} from "./lobby.js";
 
 import {Net} from "./net.js";
@@ -160,9 +163,13 @@ window.addEventListener("DOMContentLoaded", () => {
     for (const strip of [topStrip, bottomStrip]) {
       strip.classList.toggle("acting", strip === acting);
       const shown = strip === acting && !(ours && turn.asked);
-      strip.querySelector(".turn-note").textContent = shown ? turn.prompt : "";
+      // the opponent has paused the match, e.g. for the tutorial
+      const paused = strip === topStrip && pausedBy.includes(otherSide(orientation));
+      strip.querySelector(".turn-note").textContent = paused ? "paused" : shown ? turn.prompt : "";
     }
   }
+  // who has paused the match
+  let pausedBy = [];
   window.addEventListener("resize", redrawSelection);
 
   // each player's reserve, and for whoever is deciding, the seconds left of this
@@ -181,7 +188,8 @@ window.addEventListener("DOMContentLoaded", () => {
       const running = clock.running === owner;
       let onReserve = false;
       if (running) {
-        const now = Date.now();
+        // a paused clock shows what was left when it stopped
+        const now = clock.paused ? clock.received : Date.now();
         allowance.textContent = Math.ceil(Math.max(0, clock.allowanceEnds - now) / 1000);
         onReserve = now >= clock.allowanceEnds;
         left = Math.max(0, left - Math.max(0, now - clock.allowanceEnds));
@@ -196,7 +204,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
   window.setInterval(() => {
-    if (clock?.running) {
+    if (clock?.running && !clock.paused) {
       showClocks();
     }
   }, 200);
@@ -287,7 +295,25 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  setUpSettings(document.querySelector(".settings-button"), document.querySelector(".settings"));
+  // the tutorial's steps and tips, while there's a game on the board
+  const tutorial = setUpTutorial(
+    new Guide(),
+    (on) => net.send({type: "pause", on}),
+    () => {
+      if (!document.body.classList.contains("at-game") || !result.hidden || !lastView) {
+        return null;
+      }
+      const me = table?.mySide || "south";
+      return {board, view: lastView, highlight, selection, me, them: otherSide(me)};
+    },
+  );
+
+  setUpSettings(document.querySelector(".settings-button"), document.querySelector(".settings"), [
+    ["tutorial", () => tutorial.on, (on) => {
+      tutorial.on = on;
+      tutorial.update();
+    }],
+  ]);
   rules.querySelector(".rules-close").addEventListener("click", closeRules);
   rules.addEventListener("click", ({ target }) => {
     if (target === rules) {
@@ -377,6 +403,7 @@ window.addEventListener("DOMContentLoaded", () => {
       case "welcome":
         welcomed = true;
         save(ID_KEY, event.playerId);
+        tutorial.reconnected();
         if (document.activeElement !== nameInput) {
           nameInput.value = event.name;
         }
@@ -396,6 +423,9 @@ window.addEventListener("DOMContentLoaded", () => {
         }
         break;
       case "table":
+        if (event.table.playing && !table?.playing) {
+          tutorial.started();
+        }
         table = event.table;
         wantTable = table.id;
         setHash(`#/t/${table.id}`);
@@ -406,7 +436,9 @@ window.addEventListener("DOMContentLoaded", () => {
         } else {
           renderRoom(room, table, actions);
           showScreen("room");
+          lastView = null;
         }
+        tutorial.update();
         break;
       case "left":
         table = null;
@@ -447,12 +479,16 @@ window.addEventListener("DOMContentLoaded", () => {
     } else if (event.type === "CLOCK") {
       // the server's times, moved onto ours
       const offset = Date.now() - event.sent;
-      clock = {...event, allowanceEnds: event.allowanceEnds + offset};
+      clock = {...event, allowanceEnds: event.allowanceEnds + offset, received: Date.now()};
       showClocks();
     } else if (event.type === "MATCH_CHANGE") {
       // how the game went, until we move on; null once we have
       showResult(event.result, event.choiceId);
+    } else if (event.type === "PAUSE") {
+      pausedBy = event.by;
+      drawTurn();
     }
+    tutorial.update();
   }
 
   sendSelection(board, net);

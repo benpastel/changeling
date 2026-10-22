@@ -8,7 +8,8 @@ A table has two seats, NORTH and SOUTH, each empty, a user, or the bot.  Which i
 which doesn't matter to the players, who each see themselves at the bottom; the host
 takes one and the next to join, or the bot, the other.  The host picks the tiles and
 and the time control and starts the match; the match then runs until either player
-goes back to the table, to change it and start again, or quits, which closes it.  How
+goes back to the table, to change it and start again, or quits, which closes it.
+Either player can pause the match (see clock.Pause) while they're connected.  How
 the pair at the table have done is kept until one of them leaves.  A missing player is waited for: the game pauses at
 their next choice, though their clock, if the table has one, keeps running.
 
@@ -27,9 +28,9 @@ from websockets.server import WebSocketServerProtocol
 
 from server.agents import Agent, Human
 from server.bots import Bot, DEFAULT_LEVEL, LEVELS
-from server.clock import TIME_MODES
+from server.clock import TIME_MODES, UNLIMITED, Pause
 from server.config import ALL_TILES, DEFAULT_TILES, TILES_PER_GAME
-from server.constants import Player, Tile
+from server.constants import OutEventType, Player, Tile
 from server.game import Tally, play_one_match
 from server.seat import Seat
 
@@ -79,8 +80,8 @@ class Table:
     tile_mode: str = "starter"
     tiles: list[Tile] = field(default_factory=lambda: list(STARTER_TILES))
 
-    # one of clock.TIME_MODES
-    time_mode: str = "medium"
+    # one of clock.TIME_MODES; no clock while learning the game
+    time_mode: str = UNLIMITED
 
     # how well the bot plays, if it's seated: one of bots.LEVELS
     bot_level: str = DEFAULT_LEVEL
@@ -90,6 +91,7 @@ class Table:
 
     # set when the match starts
     game_seats: dict[Player, Seat] | None = None
+    pause: Pause | None = None
     task: asyncio.Task | None = None
 
     @property
@@ -165,6 +167,8 @@ class Lobby:
         side = table.side_of(user.id)
         if table.game_seats is not None and side is not None:
             table.game_seats[side].detach(websocket)
+            # nobody's left to resume it
+            await self._set_pause(table, side, False)
         await self._push_table(table)
 
     async def handle(self, user: User, event: dict) -> None:
@@ -202,6 +206,11 @@ class Lobby:
             await self._set_bot_level(user, event.get("level"))
         elif kind == "start":
             await self._start(user)
+        elif kind == "pause":
+            table = self._table_of(user)
+            side = table.side_of(user.id) if table else None
+            if table is not None and side is not None:
+                await self._set_pause(table, side, event.get("on") is True)
         else:
             print(f"Ignored {event=}")
 
@@ -405,6 +414,7 @@ class Lobby:
                 names[side] = self.users[occupant].name
 
         table.game_seats = seats
+        table.pause = Pause()
         tiles = None if table.tile_mode == "random" else list(table.tiles)
         table.task = asyncio.create_task(self._run_match(table, agents, tiles, names))
         table.task.add_done_callback(_report_crash)
@@ -417,6 +427,20 @@ class Lobby:
             if seated is not None and seated.websocket is not None:
                 await seats[side].attach(seated.websocket)
 
+    async def _set_pause(self, table: Table, side: Player, on: bool) -> None:
+        """Pause or resume the match for `side`, and tell both players who's paused it."""
+        if table.pause is None or table.game_seats is None:
+            return
+        if (side in table.pause.by) == on:
+            return
+        table.pause.set(side, on)
+        event = {
+            "type": OutEventType.PAUSE,
+            "by": [player.value for player in table.pause.by],
+        }
+        for seat in table.game_seats.values():
+            await seat.send(event)
+
     async def _run_match(
         self,
         table: Table,
@@ -425,9 +449,12 @@ class Lobby:
         names: dict[Player, str],
     ) -> None:
         """Play the match, then, unless it was quit, bring everyone back to the table."""
-        await play_one_match(agents, tiles, names, table.time_mode, table.tally)
+        await play_one_match(
+            agents, tiles, names, table.time_mode, table.tally, table.pause
+        )
         table.task = None
         table.game_seats = None
+        table.pause = None
         await self._push_table(table)
         await self._push_lobby()
 

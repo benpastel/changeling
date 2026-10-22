@@ -1,7 +1,7 @@
 "use strict";
 
 // This browser's settings, opened from the corner: whether tiles and buttons describe
-// themselves on hover, and the dark theme.  The theme is also set before the page is
+// themselves on hover, the dark theme, and whatever else main.js adds.  The theme is also set before the page is
 // drawn, by a line in each page's head, so it never flashes light.
 
 const TOOLTIPS_KEY = "arena.tooltips";
@@ -48,8 +48,9 @@ function toggle(label, on, change) {
   return row;
 }
 
-// the corner button, and the panel it opens above itself
-function setUpSettings(button, panel) {
+// the corner button, and the panel it opens above itself; `more` are other switches,
+// each [label, () => on, (on) => {}]
+function setUpSettings(button, panel, more = []) {
   applyTheme();
   panel.append(
     toggle("tooltips", settings.tooltips, (on) => {
@@ -61,9 +62,15 @@ function setUpSettings(button, panel) {
       save(THEME_KEY, on ? "dark" : "light");
       applyTheme();
     }),
+    ...more.map(([label, on, change]) => toggle(label, on(), change)),
   );
+  // those can change meanwhile, so they're looked at again on opening
+  const others = [...panel.querySelectorAll("input")].slice(2);
   button.addEventListener("click", () => {
     panel.hidden = !panel.hidden;
+    others.forEach((input, i) => {
+      input.checked = more[i][1]();
+    });
   });
   // anywhere else closes it
   document.addEventListener("click", ({ target }) => {
