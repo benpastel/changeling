@@ -22,6 +22,7 @@ import {renderChoice} from "./renderChoice.js";
 import {snapshot, animate} from "./animate.js";
 import {confetti} from "./confetti.js";
 import {setUpSettings} from "./settings.js";
+import {play} from "./sound.js";
 import {setUpTooltips} from "./tooltip.js";
 
 import {highlightSquares} from "./renderHighlights.js";
@@ -39,6 +40,9 @@ import {Net} from "./net.js";
 //
 // 0 means we aren't waiting for any input.
 let CHOICE_ID = 0;
+
+// a reserve this low shows red, and ours ticks once as it gets there
+const LOW_RESERVE_MS = 10000;
 
 // remembered across visits, so a refresh puts you back in your seat
 const ID_KEY = "arena.playerId";
@@ -175,6 +179,8 @@ window.addEventListener("DOMContentLoaded", () => {
   // each player's reserve, and for whoever is deciding, the seconds left of this
   // decision's allowance; once those are gone their reserve counts down instead
   let clock = null;
+  // our reserve when last shown, to tick once as it runs low
+  let reserveLeft = Infinity;
   function showClocks() {
     for (const strip of [topStrip, bottomStrip]) {
       const owner = strip.classList.contains("north") ? "north" : "south";
@@ -197,6 +203,14 @@ window.addEventListener("DOMContentLoaded", () => {
         allowance.textContent = "";
       }
       strip.querySelector(".clock").classList.toggle("stopped", !running);
+      // the reserve, the time for the whole game, nearly gone
+      reserve.classList.toggle("low", left <= LOW_RESERVE_MS);
+      if (owner === table?.mySide && running && !clock.paused) {
+        if (left <= LOW_RESERVE_MS && reserveLeft > LOW_RESERVE_MS) {
+          play("low");
+        }
+        reserveLeft = left;
+      }
       allowance.classList.toggle("idle", onReserve);
       reserve.classList.toggle("idle", running && !onReserve);
       const seconds = Math.ceil(left / 1000);
@@ -308,7 +322,7 @@ window.addEventListener("DOMContentLoaded", () => {
     },
   );
 
-  setUpSettings(document.querySelector(".settings-button"), document.querySelector(".settings"), [
+  setUpSettings(document.querySelector(".settings-corner"), [
     ["tutorial", () => tutorial.on, (on) => {
       tutorial.on = on;
       tutorial.update();
@@ -366,6 +380,9 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     result.querySelector(".result-table").replaceChildren(head, body);
 
+    if (!shown) {
+      play("end");
+    }
     if (!shown && outcome.winner) {
       // in the winner's colour, and the page's ink, in whichever theme
       const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -426,6 +443,13 @@ window.addEventListener("DOMContentLoaded", () => {
         if (event.table.playing && !table?.playing) {
           tutorial.started();
         }
+        // someone's sat down opposite us
+        if (table?.id === event.table.id && !event.table.playing) {
+          const filled = (t) => Object.values(t.seats).filter((occupant) => occupant !== null).length;
+          if (filled(event.table) > filled(table)) {
+            play("attention");
+          }
+        }
         table = event.table;
         wantTable = table.id;
         setHash(`#/t/${table.id}`);
@@ -455,6 +479,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  let wasChallenging = false;
   function handleGameEvent(event) {
     if (event.type === "STATE_CHANGE") {
       // update the UI with changes to the persistent game state
@@ -464,6 +489,10 @@ window.addEventListener("DOMContentLoaded", () => {
       // update the UI with changes to the current (partially) selected moves.
       // the server should call this again with null selections to clear the highlights.
       const {player, start, action, target, reflect} = event;
+      // our own tile, picked up to act with
+      if (start && player === table?.mySide && String(start) !== String(selection?.start)) {
+        play("lift");
+      }
       selection = player || start || action || target ? {player, start, action, target, reflect} : null;
       redrawSelection();
     } else if (event.type === "HIGHLIGHT_CHANGE") {
@@ -488,6 +517,12 @@ window.addEventListener("DOMContentLoaded", () => {
       pausedBy = event.by;
       drawTurn();
     }
+    // they've claimed, and we're to accept or challenge
+    const challenging = Boolean(board.querySelector('.option[data-name="🚩"]'));
+    if (challenging && !wasChallenging) {
+      play("attention");
+    }
+    wasChallenging = challenging;
     tutorial.update();
   }
 

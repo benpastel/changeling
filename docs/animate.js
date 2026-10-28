@@ -8,15 +8,20 @@
 //     bonus turns over in the unused list
 //   - money gained or spent floats up from the player's amount
 //   - webs fade in and out
+//   - a new game's tiles are dealt out from a pile in the middle of the board: to each
+//     player's squares and hand, onto the exchanges, and the rest to the unused list
+//
+// Tiles clack as they land, fall and turn over (see sound.js).
 //
 // Call snapshot() before drawing the new state, and animate() after, with the new state.
 //
 // Ideas not yet tried: attacks drawn from attacker to target (a fireball's flight, the
 // knives, the smite's bolt); the turn's highlight crossfading between the strips; the
-// tiles dealt out at the start of a game.
 
 import {PLAYERS, HIDDEN_TILE} from "./constants.js";
 import {findCell} from "./renderState.js";
+import {settings} from "./settings.js";
+import {play} from "./sound.js";
 
 // pieces slide at one speed however far they go: a step, a hook's pull, a ram's knockback
 const SLIDE_MS_PER_SQUARE = 220;
@@ -32,6 +37,9 @@ const SHUFFLE_BEAT_MS = 250;
 const FLIP_MS = 420;
 const FADE_MS = 300;
 const FLOAT_MS = 1100;
+// the deal: a tile leaves the pile this often, and takes this long to arrive
+const DEAL_GAP_MS = 55;
+const DEAL_FLY_MS = 260;
 
 let lastView = null;
 
@@ -67,9 +75,36 @@ function snapshot(board) {
   return {view: lastView, pieces, hands, marks};
 }
 
+// a game no one has done anything in yet
+const fresh = (view) => view.public_log.every((turn) => turn.events.length === 0);
+
+// the deal's animations, until they're done or something happens; and when it began
+let dealing = [];
+let dealt = 0;
+
 function animate(before, board, view) {
   const previous = lastView;
   lastView = view;
+  if (fresh(view)) {
+    if (!(previous && fresh(previous))) {
+      dealing = [];
+      dealt = performance.now();
+      if (settings.deal) {
+        deal(board, view, true);
+      } else {
+        play("start");
+      }
+    } else if (dealing.length) {
+      // drawn again before anything's happened: what's still to arrive stays hidden
+      deal(board, view, false);
+    }
+    return;
+  }
+  // something's happened, and is drawn where it is, so the deal ends where it's got to
+  for (const animation of dealing) {
+    animation.finish();
+  }
+  dealing = [];
   if (!before || before.view !== previous) {
     return;
   }
@@ -120,6 +155,7 @@ function animate(before, board, view) {
     if (from && piece) {
       const duration = travel(from.rect, piece.getBoundingClientRect(), square, SLIDE_MS_PER_SQUARE);
       fly(piece, from.rect, duration);
+      play("move", duration);
       sliding = Math.max(sliding, duration);
     }
   }
@@ -134,6 +170,9 @@ function animate(before, board, view) {
   });
 
   // a placed tile leaves as any tile it replaces does, and the hand closes up behind it
+  if (deaths.length) {
+    play("death");
+  }
   const delay = deaths.length ? PAUSE_MS : 0;
   for (const [player, index] of placements) {
     const [row, col] = view.positions[player][index];
@@ -146,7 +185,9 @@ function animate(before, board, view) {
     }
     if (piece && hand[used]) {
       const from = hand[used].rect;
-      fly(piece, from, travel(from, piece.getBoundingClientRect(), square, FLY_MS_PER_SQUARE, FLY_MIN_SQUARES), delay);
+      const duration = travel(from, piece.getBoundingClientRect(), square, FLY_MS_PER_SQUARE, FLY_MIN_SQUARES);
+      fly(piece, from, duration, delay);
+      play("move", delay + duration);
     }
     closeHand(player, hand.filter((_, i) => i !== used), square);
   }
@@ -294,6 +335,7 @@ function animateExchange(board, before, view, kept, square) {
     return null;
   }
   const player = latest[latest.length - 1].player;
+  play("exchange");
   const same = (a, b) => a[0] === b[0] && a[1] === b[1];
   for (const [oldIndex, newIndex] of kept[player] || []) {
     const position = view.positions[player][newIndex];
@@ -422,12 +464,70 @@ function flip(element, from, to, delay = 0) {
       [{transform: `perspective(400px) rotateY(${start}deg)`}, {transform: `perspective(400px) rotateY(${end}deg)`}],
       {duration: FLIP_MS / 2, easing},
     );
+  play("flip", delay + FLIP_MS / 2);
   window.setTimeout(() => {
     turn(0, 90, "ease-in").finished.then(() => {
       setGlyph(element, to);
       turn(-90, 0, "ease-out");
     }, () => {});
   }, delay);
+}
+
+// A new game's tiles, dealt face down from a pile in the middle of the board, a player
+// at a time: their squares, then their hands, then the exchanges, and the rest to the
+// unused list.  Each tile is hidden where it's going until it arrives.  Drawn again
+// meanwhile (not `start`), the tiles yet to arrive are hidden again.
+function deal(board, view, start) {
+  const [north, south] = PLAYERS.map((player) => [
+    ...view.positions[player].map(([row, col]) => pieceAt(board, row, col)),
+    ...document.querySelectorAll(`.strip.${player} .hand-tile`),
+  ]);
+  const targets = [];
+  for (let i = 0; i < Math.max(north.length, south.length); i++) {
+    targets.push(north[i], south[i]);
+  }
+  targets.push(...board.querySelectorAll(".exchange .cell-marks .board-tile"));
+  targets.push(...document.querySelectorAll(".unused-contents .acc-tile"));
+
+  const pile = board.getBoundingClientRect();
+  const x = pile.left + pile.width / 2;
+  const y = pile.top + pile.height / 2;
+  const piece = board.querySelector(".piece");
+  const fontSize = piece ? getComputedStyle(piece).fontSize : "40px";
+  const elapsed = performance.now() - dealt;
+  targets.filter(Boolean).forEach((target, i) => {
+    const delay = i * DEAL_GAP_MS;
+    const total = delay + DEAL_FLY_MS;
+    if (!start) {
+      if (total > elapsed) {
+        dealing.push(target.animate([{opacity: 0}, {opacity: 0}], {duration: total - elapsed}));
+      }
+      return;
+    }
+    const tile = document.createElement("span");
+    tile.className = "ghost";
+    tile.textContent = HIDDEN_TILE;
+    tile.style.fontSize = fontSize;
+    tile.style.color = getComputedStyle(target).color;
+    document.body.append(tile);
+    const own = tile.getBoundingClientRect();
+    tile.style.left = `${x - own.width / 2}px`;
+    tile.style.top = `${y - own.height / 2}px`;
+    const to = target.getBoundingClientRect();
+    const dx = to.left + to.width / 2 - x;
+    const dy = to.top + to.height / 2 - y;
+    const flight = tile.animate(
+      [
+        {transform: "none"},
+        {transform: "none", offset: delay / total, easing: "ease-out"},
+        {transform: `translate(${dx}px, ${dy}px) scale(${to.height / own.height})`},
+      ],
+      {duration: total},
+    );
+    flight.finished.then(() => tile.remove(), () => tile.remove());
+    dealing.push(flight, target.animate([{opacity: 0}, {opacity: 0}], {duration: total}));
+    play("deal", total);
+  });
 }
 
 // money gained or spent rises from the player's amount, and fades

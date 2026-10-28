@@ -655,6 +655,11 @@ board is sized relative to it (cqmin), so the layout holds at any laptop size.
 .sidebar.lists .sidebar-top .area-label {
   padding: 0 18px;
 }
+/* the settings in the corner sit where its label would be */
+.sidebar.lists .sidebar-top > .area-label:first-child {
+  visibility: hidden;
+  height: 28px;
+}
 .sidebar.lists .acc-tiles {
   font-size: 28px;
   line-height: 1;
@@ -797,6 +802,10 @@ board is sized relative to it (cqmin), so the layout holds at any laptop size.
 /* whichever isn't counting down is greyed */
 .clock .idle {
   color: var(--faint);
+}
+/* a reserve that's nearly gone */
+.clock .reserve.low {
+  color: var(--them);
 }
 /* a clock that isn't running at all */
 .clock.stopped {
@@ -1271,31 +1280,41 @@ the same place
 .choice-panel.left::after { top: calc(var(--point) - 8px); right: -9px; transform: rotate(-45deg); }
 
 /* -------------------------------------------------------------- settings */
-/* kept out of the way in the bottom-right corner, on every screen */
-.settings-button {
+/* the top-left corner, on every screen: sound, the settings, full screen */
+.settings-corner {
   position: fixed;
-  right: 12px;
-  bottom: 8px;
-  z-index: 15;
+  left: 6px;
+  top: 6px;
+  z-index: 40;
+  display: flex;
+  gap: 2px;
+}
+.corner-button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
   padding: 0;
-  font: inherit;
-  font-size: 11px;
-  letter-spacing: 0.06em;
   color: var(--faint);
   background: none;
   border: none;
+  border-radius: 6px;
   cursor: pointer;
 }
-.settings-button:hover {
-  color: var(--ink);
+.corner-button[hidden] {
+  display: none;
 }
-/* opens above the button */
+.corner-button:hover,
+.corner-button[aria-expanded="true"] {
+  color: var(--ink);
+  background-color: var(--hover);
+}
+/* opens below the buttons */
 .settings {
-  position: fixed;
-  right: 12px;
-  bottom: 32px;
-  z-index: 40;
-  min-width: 190px;
+  position: absolute;
+  left: 0;
+  top: 36px;
+  min-width: 210px;
   box-sizing: border-box;
   padding: 14px 18px;
   display: flex;
@@ -1319,7 +1338,7 @@ the same place
   color: var(--ink);
   cursor: pointer;
 }
-.setting input {
+.setting input[type=checkbox] {
   position: absolute;
   opacity: 0;
   pointer-events: none;
@@ -1351,6 +1370,11 @@ the same place
 }
 .setting input:checked + .switch::after {
   transform: translateX(14px);
+}
+.setting input[type=range] {
+  width: 100px;
+  margin: 0;
+  accent-color: var(--you);
 }
 .setting input:focus-visible + .switch {
   outline: 2px solid var(--you);

@@ -10,19 +10,15 @@ playwright install chromium`); it's skipped without it.
 """
 
 import json
-import os
 import random
-import socket
-import subprocess
-import sys
 import time
-from pathlib import Path
 
 import pytest
 
-sync_api = pytest.importorskip("playwright.sync_api")
+pytest.importorskip("playwright.sync_api")
 
-ROOT = Path(__file__).resolve().parent.parent
+from test.browsing import ROOT, new_game  # noqa: E402
+
 SCREENS = ROOT / "test" / "screens" / "tutorial"
 
 SIZES = [(1280, 800), (1440, 900), (1024, 768), (1920, 1080), (820, 1100)]
@@ -33,66 +29,6 @@ THEMES = ["light", "dark"]
 GAP = 14
 REACH = 9
 SLACK = 3
-
-
-def _free_pair() -> int:
-    """A port for the page whose next port is free too, for the game (see net.js)."""
-    for _ in range(50):
-        port = random.randrange(20000, 40000)
-        try:
-            for p in (port, port + 1):
-                with socket.socket() as s:
-                    s.bind(("localhost", p))
-            return port
-        except OSError:
-            continue
-    raise RuntimeError("no free ports")
-
-
-def _wait_for(port: int) -> None:
-    deadline = time.monotonic() + 15
-    while time.monotonic() < deadline:
-        try:
-            with socket.create_connection(("localhost", port), timeout=0.2):
-                return
-        except OSError:
-            time.sleep(0.1)
-    raise RuntimeError(f"nothing listening on {port}")
-
-
-@pytest.fixture(scope="module")
-def site():
-    port = _free_pair()
-    page = subprocess.Popen(
-        [sys.executable, "-m", "http.server", str(port), "--directory", "docs"],
-        cwd=ROOT,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    game = subprocess.Popen(
-        [sys.executable, "-m", "server.app"],
-        cwd=ROOT,
-        env={**os.environ, "PORT": str(port + 1), "BOT_DELAY": "0.01"},
-        stdout=subprocess.DEVNULL,
-    )
-    try:
-        _wait_for(port)
-        _wait_for(port + 1)
-        yield f"http://localhost:{port}/"
-    finally:
-        page.terminate()
-        game.terminate()
-
-
-@pytest.fixture(scope="module")
-def browser():
-    with sync_api.sync_playwright() as p:
-        try:
-            launched = p.chromium.launch()
-        except Exception as e:  # no browser installed
-            pytest.skip(f"no chromium: {e}")
-        yield launched
-        launched.close()
 
 
 # everything about the note showing, measured in the page: the card, its pointer's
@@ -179,36 +115,10 @@ def check_note(page, name: str) -> dict:
     return note
 
 
-def _new_game(
-    browser, site: str, size, theme: str, tutorial: dict | None, time_mode=None
-):
-    context = browser.new_context(viewport={"width": size[0], "height": size[1]})
-    init = f"localStorage.setItem('arena.theme', '{theme}');"
-    if tutorial is not None:
-        init += f"localStorage.setItem('arena.tutorial', '{json.dumps(tutorial)}');"
-    # only once, so the page's own saves stick across its reloads
-    context.add_init_script(
-        f"if (!sessionStorage.getItem('seeded')) {{ {init} sessionStorage.setItem('seeded', '1'); }}"
-    )
-    page = context.new_page()
-    errors: list[str] = []
-    page.on("pageerror", lambda e: errors.append(str(e)))
-    page.goto(site)
-    page.fill(".name-input", "tester")
-    page.click(".play-bot")
-    page.wait_for_selector(".room-foot .primary")
-    if time_mode:
-        page.click(f".time-area button:has-text('{time_mode}')")
-        page.wait_for_selector(f".time-area button.on:has-text('{time_mode}')")
-    page.click(".room-foot .primary")
-    page.wait_for_selector("body.at-game")
-    return context, page, errors
-
-
 @pytest.mark.parametrize("theme", THEMES)
 @pytest.mark.parametrize("size", SIZES, ids=lambda s: f"{s[0]}x{s[1]}")
 def test_every_step_of_the_intro(browser, site, size, theme):
-    context, page, errors = _new_game(browser, site, size, theme, None)
+    context, page, errors = new_game(browser, site, size, theme, None)
     page.wait_for_selector(".guide.dim .guide-card")
     texts = []
     step = 0
@@ -243,7 +153,7 @@ def test_every_step_of_the_intro(browser, site, size, theme):
 
 
 def test_the_intro_pauses_the_clock_and_can_be_ended(browser, site):
-    context, page, errors = _new_game(
+    context, page, errors = new_game(
         browser, site, (1280, 800), "light", None, time_mode="fast"
     )
     page.wait_for_selector(".guide.dim .guide-card")
@@ -327,7 +237,7 @@ def _play_a_move(page, rng: random.Random) -> None:
     ids=["1280x800-light", "1024x768-dark", "820x1100-light"],
 )
 def test_tips_as_they_come_up(browser, site, size, theme):
-    context, page, errors = _new_game(
+    context, page, errors = new_game(
         browser, site, size, theme, {"intro": True, "seen": [], "off": False}
     )
     rng = random.Random(f"{size}{theme}")
