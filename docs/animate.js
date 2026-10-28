@@ -187,7 +187,10 @@ function animate(before, board, view) {
       const from = hand[used].rect;
       const duration = travel(from, piece.getBoundingClientRect(), square, FLY_MS_PER_SQUARE, FLY_MIN_SQUARES);
       fly(piece, from, duration, delay);
-      play("move", delay + duration);
+      // arriving as the dead reach the graveyard, a clack would sound like theirs
+      if (!deaths.length) {
+        play("move", delay + duration);
+      }
     }
     closeHand(player, hand.filter((_, i) => i !== used), square);
   }
