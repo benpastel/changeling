@@ -13,11 +13,13 @@ def new_game(
     theme: str,
     tutorial: dict | None,
     time_mode=None,
+    board: str | None = None,
     storage: dict | None = None,
     script: str = "",
 ):
     """A game against the bot, with `storage` (and the theme and tutorial) saved
-    beforehand, and `script` run in the page before its own."""
+    beforehand, and `script` run in the page before its own; on `board`, if given,
+    "simple" or "full"."""
     context = browser.new_context(viewport={"width": size[0], "height": size[1]})
     storage = {"arena.theme": theme, **(storage or {})}
     if tutorial is not None:
@@ -38,6 +40,9 @@ def new_game(
     page.fill(".name-input", "tester")
     page.click(".play-bot")
     page.wait_for_selector(".room-foot .primary")
+    if board:
+        page.click(f".board-area button[data-board='{board}']")
+        page.wait_for_selector(f".board-area button.on[data-board='{board}']")
     if time_mode:
         page.click(f".time-area button:has-text('{time_mode}')")
         page.wait_for_selector(f".time-area button.on:has-text('{time_mode}')")

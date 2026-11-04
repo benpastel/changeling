@@ -57,6 +57,11 @@ DEFAULT_TILES = [
 ]
 
 
+# the boards a table can play on: the full one, with two exchanges and a bonus square
+# in the middle row, or the simple one for new players, with just the tiles
+BOARDS = ("simple", "full")
+
+
 def bonus_and_exchange_positions() -> tuple[Square, list[Square]]:
     # Always randomized.
     # randomly shuffle the middle squares,

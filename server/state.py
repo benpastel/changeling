@@ -108,7 +108,7 @@ class State(BaseModel):
     exchange_tiles: list[list[Tile]]
     exchange_tiles_revealed: dict[Player, list[bool]]
 
-    # The remaining tile tiles are face-down off-board; can be revealed by bird.
+    # The remaining tiles are face-down off-board; can be revealed by the bonus.
     unused_tiles: list[Tile]
     unused_revealed: dict[Player, list[bool]]
 
@@ -158,7 +158,8 @@ class State(BaseModel):
     # Position and value of the bonus square
     # eventually the effect of the bonus square should be configurable in lobby
     # for now we hardcode it
-    bonus_position: Square
+    # None on the simple board, which has no bonus square and no exchanges
+    bonus_position: Square | None
     bonus_amount: int  # extra coin per-turn from bonus square
     bonus_reveal: int  # unused cards revealed per-turn from bonus square
     x2_tile: Tile | None  # tile with doubled effectiveness, set via bonus square
@@ -186,8 +187,7 @@ class State(BaseModel):
             + self.tiles_in_hand[other_player(self.current_player)]
             + self.tiles_on_board[self.current_player]
             + self.tiles_on_board[other_player(self.current_player)]
-            + self.exchange_tiles[0]
-            + self.exchange_tiles[1]
+            + [tile for pair in self.exchange_tiles for tile in pair]
             + self.discard
         ]
         assert len(viewed_tiles) == 15
@@ -420,7 +420,7 @@ class State(BaseModel):
             tile_counts[tile_1] += 1
             tile_counts[tile_2] += 1
 
-        assert len(self.unused_tiles) == 3
+        assert len(self.unused_tiles) == 15 - 8 - 2 * len(self.exchange_tiles)
         for tile in self.unused_tiles:
             tile_counts[tile] += 1
 
@@ -490,11 +490,14 @@ def new_state(
     tile_set: list[Tile] | None,
     first_player: Player,
     names: dict[Player, str],
+    simple: bool = False,
 ) -> State:
     """
     Return a new state with the tiles randomly dealt.
 
     `tile_set` is the set of tiles in use, or None to randomize it along with everything else.
+    `simple` is the board for new players: no exchanges and no bonus square, so the
+    tiles that would be on the exchanges are unused too.
     """
     randomize = tile_set is None
 
@@ -504,7 +507,11 @@ def new_state(
     bonus_reveal = choose_bonus_reveal(randomize)
     tiles_in_game = choose_tiles_in_game(tile_set)
     start_positions = choose_start_positions()
+    bonus_position: Square | None
     bonus_position, exchange_positions = bonus_and_exchange_positions()
+    if simple:
+        bonus_position, exchange_positions = None, []
+    exchanges = len(exchange_positions)
 
     start_coins = {
         Player.RED: start_coins_per_player,
@@ -536,18 +543,15 @@ def new_state(
         positions=start_positions,
         piece_ids={Player.RED: [0, 1], Player.BLUE: [2, 3]},
         next_piece_id=4,
-        exchange_tiles=[
-            [tiles[8], tiles[9]],
-            [tiles[10], tiles[11]],
-        ],
+        exchange_tiles=[[tiles[8 + 2 * e], tiles[9 + 2 * e]] for e in range(exchanges)],
         exchange_tiles_revealed={
-            Player.RED: [False, False],
-            Player.BLUE: [False, False],
+            Player.RED: [False] * exchanges,
+            Player.BLUE: [False] * exchanges,
         },
-        unused_tiles=tiles[12:15],
+        unused_tiles=tiles[8 + 2 * exchanges :],
         unused_revealed={
-            Player.RED: [False, False, False],
-            Player.BLUE: [False, False, False],
+            Player.RED: [False] * (7 - 2 * exchanges),
+            Player.BLUE: [False] * (7 - 2 * exchanges),
         },
         discard=[],
         coins=start_coins,

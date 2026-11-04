@@ -262,7 +262,11 @@ def _standing(state: State, player: Player) -> float:
     """What a position is worth to `player`, beyond the tiles: coins, and the bonus."""
     them = other_player(player)
     value = float(state.coins[player] - state.coins[them])
-    on_bonus = state.maybe_player_at(state.bonus_position)
+    on_bonus = (
+        state.maybe_player_at(state.bonus_position)
+        if state.bonus_position is not None
+        else None
+    )
     if on_bonus == player:
         value += 0.6 * state.bonus_amount
     elif on_bonus == them:

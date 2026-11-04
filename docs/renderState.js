@@ -74,12 +74,13 @@ function renderBoard(board, player_view) {
     cell.classList.remove(RED_PLAYER, BLUE_PLAYER, 'board-tile', 'special', 'bonus', 'exchange');
   }
 
-  // create the bonus square
-  const [bonusRow, bonusCol] = player_view.bonus_position;
-  const bonusCell = findCell(board, bonusRow, bonusCol);
-  const bonusText = '$'.repeat(player_view.bonus_amount) + '🔎'.repeat(player_view.bonus_reveal)
-
-  addSquareMarks(bonusCell, 'bonus', [bonusText]);
+  // create the bonus square, unless it's the simple board
+  if (player_view.bonus_position) {
+    const [bonusRow, bonusCol] = player_view.bonus_position;
+    const bonusCell = findCell(board, bonusRow, bonusCol);
+    const bonusText = '$'.repeat(player_view.bonus_amount) + '🔎'.repeat(player_view.bonus_reveal)
+    addSquareMarks(bonusCell, 'bonus', [bonusText]);
+  }
 
   // create the exchange tile squares
   for (let p = 0; p < player_view.exchange_positions.length; p++) {

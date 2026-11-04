@@ -29,7 +29,7 @@ from websockets.server import WebSocketServerProtocol
 from server.agents import Agent, Human
 from server.bots import Bot, DEFAULT_LEVEL, LEVELS
 from server.clock import TIME_MODES, UNLIMITED, Pause
-from server.config import ALL_TILES, DEFAULT_TILES, TILES_PER_GAME
+from server.config import ALL_TILES, BOARDS, DEFAULT_TILES, TILES_PER_GAME
 from server.constants import OutEventType, Player, Tile
 from server.game import Tally, play_one_match
 from server.seat import Seat
@@ -82,6 +82,10 @@ class Table:
 
     # one of clock.TIME_MODES; no clock while learning the game
     time_mode: str = UNLIMITED
+
+    # one of config.BOARDS: "simple" for new players, without the exchanges and the
+    # bonus square, or "full"; the host's browser says which to start with
+    board: str = "simple"
 
     # how well the bot plays, if it's seated: one of bots.LEVELS
     bot_level: str = DEFAULT_LEVEL
@@ -187,7 +191,7 @@ class Lobby:
         if kind == "setName":
             await self._set_name(user, event.get("name"))
         elif kind == "createTable":
-            await self._create_table(user, event.get("bot") is True)
+            await self._create_table(user, event.get("bot") is True, event.get("board"))
         elif kind == "joinTable":
             await self._join_table(user, event.get("tableId"))
         elif kind == "leaveTable":
@@ -202,6 +206,8 @@ class Lobby:
             await self._set_tiles(user, event.get("mode"), event.get("tiles"))
         elif kind == "setTime":
             await self._set_time(user, event.get("mode"))
+        elif kind == "setBoard":
+            await self._set_board(user, event.get("board"))
         elif kind == "setBotLevel":
             await self._set_bot_level(user, event.get("level"))
         elif kind == "start":
@@ -239,7 +245,7 @@ class Lobby:
 
     # ---------------------------------------------------------------- tables
 
-    async def _create_table(self, user: User, bot: bool) -> None:
+    async def _create_table(self, user: User, bot: bool, board: object) -> None:
         if not user.name or self._busy(user):
             return
         await self._leave_table(user, quiet=True)
@@ -248,6 +254,8 @@ class Lobby:
             host_id=user.id,
             seats={Player.RED: BOT if bot else None, Player.BLUE: user.id},
         )
+        if board in BOARDS:
+            table.board = str(board)
         self.tables[table.id] = table
         user.table_id = table.id
         await self._push_table(table)
@@ -381,6 +389,15 @@ class Lobby:
         table.time_mode = str(mode)
         await self._push_table(table)
 
+    async def _set_board(self, user: User, board: object) -> None:
+        table = self._table_of(user)
+        if table is None or table.playing or table.host_id != user.id:
+            return
+        if board not in BOARDS:
+            return
+        table.board = str(board)
+        await self._push_table(table)
+
     async def _set_bot_level(self, user: User, level: object) -> None:
         table = self._table_of(user)
         if table is None or table.playing or table.host_id != user.id:
@@ -450,7 +467,13 @@ class Lobby:
     ) -> None:
         """Play the match, then, unless it was quit, bring everyone back to the table."""
         await play_one_match(
-            agents, tiles, names, table.time_mode, table.tally, table.pause
+            agents,
+            tiles,
+            names,
+            table.time_mode,
+            table.tally,
+            table.pause,
+            table.board == "simple",
         )
         table.task = None
         table.game_seats = None
@@ -492,6 +515,7 @@ class Lobby:
                 "mode": table.tile_mode,
                 "tiles": table.tiles,
                 "time": table.time_mode,
+                "board": table.board,
                 "botLevel": table.bot_level,
                 "mySide": my_side.value if my_side else None,
                 "amHost": table.host_id == user_id,

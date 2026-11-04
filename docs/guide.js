@@ -151,9 +151,11 @@ class Guide {
   //   dim       shade everything else, and take the clicks and keys
   //   sides     the sides of its target the card would rather be on, in order
   //   primary   [label, onClick], the button that moves on
+  //   back      [label, onClick], the one that goes back a note, if there's one to go to
   //   secondary [label, onClick], the quiet one that stops
+  //   count     which note this is of how many in a row, e.g. "2/3"
   //   gone      called once if what it points at disappears, or `holds()` stops holding
-//   holds     () => whether it's still wanted
+  //   holds     () => whether it's still wanted
   show(note) {
     this.note = {...note, spots: note.spots ?? note.point, avoid: note.avoid ?? (() => [])};
     this.root.hidden = false;
@@ -173,6 +175,15 @@ class Guide {
     };
     if (note.secondary) {
       buttons.append(button(note.secondary, "guide-secondary"));
+    }
+    if (note.count) {
+      const count = document.createElement("span");
+      count.className = "guide-count";
+      count.textContent = note.count;
+      buttons.append(count);
+    }
+    if (note.back) {
+      buttons.append(button(note.back, "guide-back"));
     }
     if (note.primary) {
       buttons.append(button(note.primary, "guide-primary"));
@@ -200,6 +211,8 @@ class Guide {
       this.note.secondary[1]();
     } else if ((event.key === "Enter" || event.key === "ArrowRight") && this.note.primary) {
       this.note.primary[1]();
+    } else if (event.key === "ArrowLeft" && this.note.back) {
+      this.note.back[1]();
     } else {
       return;
     }

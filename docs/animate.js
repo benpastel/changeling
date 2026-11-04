@@ -81,6 +81,13 @@ const fresh = (view) => view.public_log.every((turn) => turn.events.length === 0
 // the deal's animations, until they're done or something happens; and when it began
 let dealing = [];
 let dealt = 0;
+// when the last tile of the deal arrives
+let dealEnds = 0;
+
+// how long until the deal's done, in ms; 0 once it is, or if there's none
+function dealLeft() {
+  return Math.max(0, dealEnds - performance.now());
+}
 
 function animate(before, board, view) {
   const previous = lastView;
@@ -105,6 +112,7 @@ function animate(before, board, view) {
     animation.finish();
   }
   dealing = [];
+  dealEnds = 0;
   if (!before || before.view !== previous) {
     return;
   }
@@ -530,6 +538,7 @@ function deal(board, view, start) {
     flight.finished.then(() => tile.remove(), () => tile.remove());
     dealing.push(flight, target.animate([{opacity: 0}, {opacity: 0}], {duration: total}));
     play("deal", total);
+    dealEnds = performance.now() + total;
   });
 }
 
@@ -592,4 +601,4 @@ function fadeWebs(board, was, view) {
   }
 }
 
-export {snapshot, animate};
+export {snapshot, animate, dealLeft};

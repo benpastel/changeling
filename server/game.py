@@ -46,6 +46,9 @@ async def _resolve_bonus(
     players: dict[Player, Agent],
 ) -> None:
     """Give a player bonus for starting their turn on the bonus square"""
+    if state.bonus_position is None:
+        # the simple board has none
+        return
     player = state.maybe_player_at(state.bonus_position)
     if state.current_player != player:
         # current player does not get the bonus
@@ -854,17 +857,19 @@ async def play_one_game(
     names: dict[Player, str],
     time_mode: str,
     pause: Pause | None = None,
+    simple: bool = False,
 ) -> tuple[dict[Player, int], GameResult]:
     """
     Play one game between the seated players.
 
     `tiles` is the set of tiles in use, or None to randomize it.  `time_mode` is one of
-    clock.TIME_MODES.  The game holds still while `pause` is paused.
+    clock.TIME_MODES.  The game holds still while `pause` is paused.  `simple` is the
+    board without exchanges or the bonus square.
 
     Returns the game score and result.
     """
     # initialize a new game
-    state = new_state(match_score, tiles, first_player, names)
+    state = new_state(match_score, tiles, first_player, names, simple)
     # a bot follows the game through its own view of this state
     for player, agent in players.items():
         if not isinstance(agent, Human):
@@ -913,10 +918,11 @@ async def play_one_match(
     time_mode: str,
     tally: Tally,
     pause: Pause | None = None,
+    simple: bool = False,
 ) -> None:
     """
     Play games in a loop, adding each to `tally` and showing both players how it went,
-    until either goes back to the table.
+    until either goes back to the table.  `simple` plays on the board for new players.
     """
     print(f"New match with {names}")
     while True:
@@ -928,6 +934,7 @@ async def play_one_match(
             names,
             time_mode,
             pause,
+            simple,
         )
         winner = {
             GameResult.RED_WINS: Player.RED,

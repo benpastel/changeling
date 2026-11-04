@@ -194,6 +194,22 @@ function renderTiles(table, actions) {
   return area;
 }
 
+// the board: the simple one for new players, without the exchanges and the bonus
+// square, or the full one; only the host can change it
+const BOARD_NAMES = [["simple", "first games"], ["full", "full board"]];
+
+function renderBoardChoice(table, actions) {
+  const area = element("div", "board-area");
+  const modes = element("div", "segmented");
+  for (const [board, name] of BOARD_NAMES) {
+    const choice = button(board === table.board ? "on" : "", name, () => actions.setBoard(board), !table.amHost);
+    choice.dataset.board = board;
+    modes.append(choice);
+  }
+  area.append(modes);
+  return area;
+}
+
 // the move clocks; only the host can change them
 function renderTime(table, actions) {
   const area = element("div", "time-area");
@@ -211,7 +227,7 @@ function renderRoom(panel, table, actions) {
   const card = element("div", "room-card");
   const you = element("div", "seat you");
   you.append(element("span", "seat-name", table.seats[table.mySide]?.name ?? ""));
-  card.append(renderOpponent(table, actions), renderTiles(table, actions), renderTime(table, actions), you);
+  card.append(renderOpponent(table, actions), renderTiles(table, actions), renderBoardChoice(table, actions), renderTime(table, actions), you);
 
   const full = Object.values(table.seats).every((occupant) => occupant !== null);
   const ready = table.mode === "random" || table.tiles.length === TILES_PER_GAME;

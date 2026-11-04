@@ -237,7 +237,7 @@ const REFLECTED = "↩";
 const REFERENCE = {
   "🀥": {uses: [{label: "move", gain: 3, lines: ["move 1 in any direction"], boards: [BOARDS.step]}]},
   "🀨": {uses: [{label: "move", gain: 4, lines: ["move forward 1"], boards: [BOARDS.forward]}]},
-  "🀐": {uses: [{label: "move", gain: 2, lines: ["move up to 2", "reveal 1 unused tile"], boards: [BOARDS.two]}]},
+  "🀐": {uses: [{label: "move", gain: 2, lines: ["move up to 2"], boards: [BOARDS.two]}]},
   "🀒": {
     uses: [
       {label: "adjacent", cost: 1, lines: ["kill an adjacent enemy"], boards: [BOARDS.adjacent]},

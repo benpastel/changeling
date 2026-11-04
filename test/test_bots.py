@@ -21,7 +21,9 @@ EVERYTHING = [Tile.FROST, Tile.SPIDER, Tile.RAM, Tile.THIEF, Tile.GRENADES]
 LIGHT = [Tile.SUNBEAM, Tile.KNIVES, Tile.HOOK, Tile.FIREBALL, Tile.BIRD]
 
 
-def _play(red: str, blue: str, tiles: list[Tile] | None, seed: int) -> State:
+def _play(
+    red: str, blue: str, tiles: list[Tile] | None, seed: int, simple: bool = False
+) -> State:
     random.seed(seed)
     bots = {
         Player.RED: Bot(red, delay=0, rng=random.Random(seed)),
@@ -36,6 +38,7 @@ def _play(red: str, blue: str, tiles: list[Tile] | None, seed: int) -> State:
                 Player.BLUE,
                 {p: p.value for p in Player},
                 "unlimited",
+                simple=simple,
             ),
             timeout=30,
         )
@@ -52,6 +55,16 @@ def test_every_level_plays_games_to_the_end(red, blue):
     for seed, tiles in [(1, None), (2, None), (3, EVERYTHING), (4, LIGHT)]:
         state = _play(red, blue, tiles, seed)
         assert state.game_result() != GameResult.ONGOING
+
+
+@pytest.mark.parametrize("level", LEVELS)
+def test_games_on_the_simple_board_play_to_the_end(level):
+    # no exchanges and no bonus square: the tiles they'd hold are unused instead
+    for seed, tiles in [(5, None), (6, EVERYTHING)]:
+        state = _play(level, level, tiles, seed, simple=True)
+        assert state.game_result() != GameResult.ONGOING
+        assert state.exchange_positions == [] and state.bonus_position is None
+        assert len(state.unused_tiles) == 7
 
 
 def test_piece_ids_follow_pieces_and_are_never_reused():

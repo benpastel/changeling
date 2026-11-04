@@ -1,13 +1,16 @@
 "use strict";
 
 // The tutorial: the first time this browser plays, a few steps over the live board
-// show the gist, with the match paused for both players; after that, a tip the first
-// time each other thing comes up.  Both are notes from the guide (see guide.js).
+// show the gist, with the match paused for both players, and the same for the
+// exchanges and the bonus square the first time a game has them (the simple board
+// doesn't); after that, a tip the first time each other thing comes up.  Both are notes
+// from the guide (see guide.js).
 //
 // Each step and tip finds what it points at in `game`: {board, view, highlight,
 // selection, me, them}, the latest of what main.js has drawn.
 
 import {RESPONSES} from "./constants.js";
+import {dealLeft} from "./animate.js";
 
 const KEY = "arena.tutorial";
 
@@ -20,7 +23,7 @@ const panel = one(".board .choice-panel");
 const panelHas = (name) => document.querySelector(`.board .choice-panel .option[data-name="${name}"]`);
 
 // the steps over the board, before the first move
-const STEPS = [
+const INTRO = [
   {
     text: (game) => `<b>You're ${game.me}, they're ${game.them}.</b> Each side has four tiles: two on the board, two in hand, hidden from the other side. Lose all four and you lose.`,
     point: (game) => pieces(game.me),
@@ -33,6 +36,22 @@ const STEPS = [
   {
     text: "When they claim, you can accept, or <b>challenge</b> and reveal the tile. Whoever's wrong loses a tile.",
     point: (game) => pieces(game.them),
+  },
+];
+
+// the full board's squares, the first time a game has them
+const SQUARES = [
+  {
+    text: "An <b>exchange</b>: move onto one to look at its two hidden tiles, and swap yours for one if you like.",
+    point: () => all(".board .cell.exchange"),
+  },
+  {
+    text: (game) => {
+      const {bonus_amount: amount, bonus_reveal: reveal} = game.view;
+      const seen = reveal === 1 ? "a look at an unused tile" : `a look at ${reveal} unused tiles`;
+      return `Start a turn on the <b>bonus</b> square for $${amount}${reveal ? ` and ${seen}` : ""}.`;
+    },
+    point: () => all(".board .cell.bonus"),
   },
 ];
 
@@ -59,22 +78,6 @@ const TIPS = [
     when: () => panelHas("🚩"),
     text: () => "Tiles you haven't seen. If none of what they claimed is here, it's a bluff.",
     point: () => one(".hidden-tiles-contents"),
-  },
-  {
-    id: "exchange",
-    when: () => document.querySelector(".board .cell.exchange.highlight"),
-    text: () => "Move onto an <b>exchange</b> to look at its two hidden tiles, and swap yours for one if you like.",
-    point: () => all(".board .cell.exchange.highlight"),
-  },
-  {
-    id: "bonus",
-    when: (game) => document.querySelector(`.board .cell.bonus.${game.me}, .board .cell.bonus.${game.them}`),
-    text: (game) => {
-      const {bonus_amount: amount, bonus_reveal: reveal} = game.view;
-      const seen = reveal === 1 ? "a look at an unused tile" : `a look at ${reveal} unused tiles`;
-      return `Start a turn on the <b>bonus</b> square for $${amount}${reveal ? ` and ${seen}` : ""}.`;
-    },
-    point: () => all(".board .cell.bonus"),
   },
   {
     id: "unused",
@@ -105,12 +108,16 @@ const TIPS = [
   },
 ];
 
+// what's been shown: the intro, the full board's squares, which tips; and whether tips
+// are off.  Tips turned off before the squares had steps of their own leave them off too.
 function load() {
+  let saved = {};
   try {
-    return {intro: false, seen: [], off: false, ...JSON.parse(window.localStorage.getItem(KEY) ?? "{}")};
+    saved = JSON.parse(window.localStorage.getItem(KEY) ?? "{}");
   } catch {
-    return {intro: false, seen: [], off: false};
+    // shown again
   }
+  return {intro: false, board: saved.off ?? false, seen: [], off: false, ...saved};
 }
 
 // `guide` shows the notes; `pause(on)` pauses or resumes the match; `game()` gives what's
@@ -124,8 +131,11 @@ function setUpTutorial(guide, pause, game) {
       // private windows may refuse; it'll show again next time
     }
   };
-  // which step of the steps is showing, or null; and whether we've paused the match
+  // the steps showing now, one after another, and which of them is, or null; and
+  // whether we've paused the match
+  let steps = null;
   let step = null;
+  let waiting = 0;
   let paused = false;
   let tip = null;
 
@@ -134,9 +144,19 @@ function setUpTutorial(guide, pause, game) {
     pause(on);
   };
 
+  // the steps due before play, given the game: the intro, and the squares on a board
+  // that has them
+  const due = (view) => [
+    ...(saved.intro ? [] : INTRO),
+    ...(saved.board || view.exchange_positions.length === 0 ? [] : SQUARES),
+  ];
+
+  // through the steps, or out of them: either way they've been seen
   const end = () => {
+    saved.intro ||= steps.includes(INTRO[0]);
+    saved.board ||= steps.includes(SQUARES[0]);
+    steps = null;
     step = null;
-    saved.intro = true;
     save();
     guide.hide();
     setPaused(false);
@@ -145,13 +165,18 @@ function setUpTutorial(guide, pause, game) {
 
   const showStep = () => {
     const now = game();
-    const {text, point, spots} = STEPS[step];
-    const last = step === STEPS.length - 1;
+    const {text, point, spots} = steps[step];
+    const last = step === steps.length - 1;
     guide.show({
       text: typeof text === "function" ? text(now) : text,
       point: point(now),
       spots: spots ? spots(now) : undefined,
       dim: true,
+      count: steps.length > 1 ? `${step + 1}/${steps.length}` : null,
+      back: step > 0 ? ["back", () => {
+        step -= 1;
+        showStep();
+      }] : null,
       secondary: ["end tutorial", end],
       primary: [last ? "play" : "next", () => {
         if (last) {
@@ -199,14 +224,24 @@ function setUpTutorial(guide, pause, game) {
       }
       return;
     }
-    if (!saved.intro) {
+    if (steps) {
+      return;
+    }
+    const coming = due(now.view);
+    if (coming.length) {
+      tip = null;
       if (!paused) {
         setPaused(true);
       }
-      if (step === null) {
-        step = 0;
-        showStep();
+      // once the tiles are dealt, so the steps show where they've landed
+      if (dealLeft() > 0) {
+        window.clearTimeout(waiting);
+        waiting = window.setTimeout(update, dealLeft() + 50);
+        return;
       }
+      steps = coming;
+      step = 0;
+      showStep();
       return;
     }
     if (saved.off || tip) {
@@ -220,10 +255,10 @@ function setUpTutorial(guide, pause, game) {
 
   return {
     update,
-    // a match started: pause it straight away if the steps are to come, before
+    // a match started on `board`: pause it straight away if steps are to come, before
     // anyone can move
-    started() {
-      if (!saved.intro) {
+    started(board) {
+      if (!saved.intro || (board === "full" && !saved.board)) {
         setPaused(true);
       }
     },
@@ -234,14 +269,16 @@ function setUpTutorial(guide, pause, game) {
       }
     },
     get on() {
-      return !saved.intro || !saved.off;
+      return !saved.intro || !saved.board || !saved.off;
     },
     // from the settings: all over again, from the next thing drawn, or never
     set on(on) {
-      saved = on ? {intro: false, seen: [], off: false} : {...saved, intro: true, off: true};
+      saved = on
+        ? {intro: false, board: false, seen: [], off: false}
+        : {...saved, intro: true, board: true, off: true};
       save();
     },
   };
 }
 
-export {setUpTutorial, STEPS, TIPS};
+export {setUpTutorial, INTRO, SQUARES, TIPS};

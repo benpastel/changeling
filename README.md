@@ -14,7 +14,7 @@ Each game uses 5 types of tiles, with 3 copies each.  The tile abilities are:
  - 🀥 FLOWER: move 1, gain $3
  - 🀨 HARVESTER: move forward 1, gain $4
  - 🀍 HOOK: grab an enemy along a straight or diagonal line, pull them adjacent, and steal $2.  Reflected by 🀍 HOOK.
- - 🀐 BIRD: move 2, gain $2, 🔎 REVEAL one tile unused this game
+ - 🀐 BIRD: move 2, gain $2
  - 🀛 GRENADES: roll a grenade exactly 2 squares away in an unobstructed cardinal direction, and explode a 3x3 square.
  - 🀒 KNIVES: pay $1 to kill at range 1, or $5 to kill at range 2.  Reflected by 🀒 KNIVES.
  - 🀌 THIEF: steal $4 at range 1, and swap places with target.  Reflected by 🀌 THIEF.
@@ -37,7 +37,7 @@ When a player reaches $10 coins, they immediately ⚡ SMITE: pay $10 to kill any
 
 When a tile is killed, the owning player replaces it with a tile from their hand, if they have any.  When a player's 4th tile is killed, they lose and the game is over.
 
-There are two types of special board locations:
+On the full board there are two types of special board locations (the simple board, for new players, has neither):
  - EXCHANGE squares have two face-down tiles.  When a player moves onto them, they look at the face-down tiles and optionally exchange one with their current tile.
  - If a player starts their turn occupying the BONUS square, they get bonus money and 🔎 reveal tile(s) unused this game.
 

@@ -44,6 +44,10 @@ let CHOICE_ID = 0;
 // a reserve this low shows red, and ours ticks once as it gets there
 const LOW_RESERVE_MS = 10000;
 
+// a new table starts on the simple board, until this browser has played on the full one
+const FULL_PLAYED_KEY = "arena.fullPlayed";
+const firstBoard = () => (load(FULL_PLAYED_KEY) ? "full" : "simple");
+
 // remembered across visits, so a refresh puts you back in your seat
 const ID_KEY = "arena.playerId";
 const NAME_KEY = "arena.name";
@@ -252,6 +256,7 @@ window.addEventListener("DOMContentLoaded", () => {
     removeBot: () => net.send({type: "removeBot"}),
     setTiles: (mode, tiles) => net.send({type: "setTiles", mode, tiles}),
     setTime: (mode) => net.send({type: "setTime", mode}),
+    setBoard: (board) => net.send({type: "setBoard", board}),
     setBotLevel: (level) => net.send({type: "setBotLevel", level}),
     start: () => net.send({type: "start"}),
     // before a game, the reference shows whichever tiles were clicked
@@ -274,8 +279,8 @@ window.addEventListener("DOMContentLoaded", () => {
   // a pasted table link joins once the name is entered, not on its first letter
   nameInput.addEventListener("change", maybeJoin);
   setUpLobby(lobby, {
-    newTable: () => net.send({type: "createTable"}),
-    playBot: () => net.send({type: "createTable", bot: true}),
+    newTable: () => net.send({type: "createTable", board: firstBoard()}),
+    playBot: () => net.send({type: "createTable", bot: true, board: firstBoard()}),
   });
   // the reference for the tiles in play: one click opens it over most of the screen
   const openRules = () => { rules.hidden = false; };
@@ -450,7 +455,7 @@ window.addEventListener("DOMContentLoaded", () => {
         break;
       case "table":
         if (event.table.playing && !table?.playing) {
-          tutorial.started();
+          tutorial.started(event.table.board);
         }
         // someone's sat down opposite us
         if (table?.id === event.table.id && !event.table.playing) {
@@ -495,6 +500,9 @@ window.addEventListener("DOMContentLoaded", () => {
     if (event.type === "STATE_CHANGE") {
       // update the UI with changes to the persistent game state
       lastView = event["playerView"];
+      if (lastView.exchange_positions.length > 0) {
+        save(FULL_PLAYED_KEY, "yes");
+      }
       renderGame(lastView);
     } else if (event.type === "SELECTION_CHANGE") {
       // update the UI with changes to the current (partially) selected moves.

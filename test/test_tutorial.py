@@ -115,37 +115,87 @@ def check_note(page, name: str) -> dict:
     return note
 
 
-@pytest.mark.parametrize("theme", THEMES)
-@pytest.mark.parametrize("size", SIZES, ids=lambda s: f"{s[0]}x{s[1]}")
-def test_every_step_of_the_intro(browser, site, size, theme):
-    context, page, errors = new_game(browser, site, size, theme, None)
+def _changed(page, text: str) -> None:
+    page.wait_for_function(
+        "(previous) => document.querySelector('.guide-text')?.textContent !== previous",
+        arg=text,
+    )
+
+
+def _step_through(page, name: str) -> list[str]:
+    """Every step showing, counted, each checked, going back once along the way;
+    what each said."""
     page.wait_for_selector(".guide.dim .guide-card")
-    texts = []
-    step = 0
+    texts: list[str] = []
+    went_back = False
     while True:
-        note = check_note(page, f"intro-{size[0]}x{size[1]}-{theme}-{step + 1}")
+        note = check_note(page, f"{name}-{len(texts) + 1}")
         assert note["dim"]
-        texts.append(note["text"])
         # nothing has happened in the game meanwhile
         assert page.locator(".log-item").count() == 0
+        count = page.locator(".guide-count").text_content()
+        assert count.startswith(f"{len(texts) + 1}/")
+        texts.append(note["text"])
+        # back from the second step shows the first again, then on to the second
+        if len(texts) == 2 and not went_back:
+            went_back = True
+            page.locator(".guide-back").click()
+            _changed(page, note["text"])
+            assert page.locator(".guide-text").text_content() == texts[0]
+            assert page.locator(".guide-back").count() == 0
+            texts.pop()
+            page.keyboard.press("ArrowRight")
+            _changed(page, texts[0])
+            continue
         primary = page.locator(".guide-primary")
         last = primary.text_content() == "play"
         primary.click()
-        step += 1
         if last:
+            assert count == f"{len(texts)}/{len(texts)}"
             break
-        page.wait_for_function(
-            "(previous) => document.querySelector('.guide-text')?.textContent !== previous",
-            arg=note["text"],
-        )
-    assert len(set(texts)) == step >= 2
+        _changed(page, note["text"])
     page.wait_for_selector(".guide", state="hidden")
+    return texts
+
+
+@pytest.mark.parametrize("theme", THEMES)
+@pytest.mark.parametrize("size", SIZES, ids=lambda s: f"{s[0]}x{s[1]}")
+def test_every_step_of_the_intro(browser, site, size, theme):
+    # on the full board, so the squares' steps come after the intro's
+    context, page, errors = new_game(browser, site, size, theme, None, board="full")
+    texts = _step_through(page, f"intro-{size[0]}x{size[1]}-{theme}")
+    assert len(set(texts)) == len(texts) == 5
     saved = json.loads(page.evaluate("localStorage.getItem('arena.tutorial')"))
-    assert saved["intro"] is True
+    assert saved["intro"] is True and saved["board"] is True
 
     # once played through, a new page doesn't show it again
     page.reload()
     page.wait_for_selector("body.at-game")
+    page.wait_for_timeout(500)
+    assert not page.locator(".guide.dim").is_visible()
+    assert errors == []
+    context.close()
+
+
+def test_the_squares_come_with_the_first_full_board(browser, site):
+    # a player through the intro on the simple board, playing on the full one
+    played = {"intro": True, "board": False, "seen": [], "off": False}
+    context, page, errors = new_game(
+        browser, site, (1280, 800), "light", played, board="full"
+    )
+    texts = _step_through(page, "squares")
+    assert len(texts) == 2
+    assert "exchange" in texts[0] and "bonus" in texts[1]
+    assert errors == []
+    context.close()
+
+
+def test_the_simple_board_has_no_squares_and_no_steps_for_them(browser, site):
+    played = {"intro": True, "board": False, "seen": [], "off": False}
+    context, page, errors = new_game(browser, site, (1280, 800), "light", played)
+    page.wait_for_selector(".board .piece")
+    assert page.locator(".board .cell.exchange, .board .cell.bonus").count() == 0
+    assert page.locator(".unused-contents .acc-tile").count() == 7
     page.wait_for_timeout(500)
     assert not page.locator(".guide.dim").is_visible()
     assert errors == []

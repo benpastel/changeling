@@ -600,11 +600,6 @@ def take_action(
         # gain coins
         state.coins[player] += COIN_GAIN[action] * repeats
 
-        if action == Tile.BIRD:
-            for repeat in range(repeats):
-                # reveal 1 unused tile
-                state.reveal_unused()
-
         # kill nobody
         return []
 
