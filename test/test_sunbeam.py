@@ -13,21 +13,21 @@ from server.constants import Player, Square, Tile
 from server.game import _resolve_action, _select_response
 from server.state import LogKind, State, new_state
 
-N, S = Player.N, Player.S
+R, B = Player.RED, Player.BLUE
 
 
-def _state(north: list[Square], south: list[Square]) -> State:
+def _state(red: list[Square], blue: list[Square]) -> State:
     random.seed(0)
     state = new_state(
         {p: 0 for p in Player},
         [Tile.SUNBEAM, Tile.KNIVES, Tile.HOOK, Tile.FIREBALL, Tile.BIRD],
-        N,
+        R,
         {p: p.value for p in Player},
     )
-    state.positions = {N: north, S: south}
-    state.piece_ids = {N: [0, 1][: len(north)], S: [2, 3][: len(south)]}
-    state.tiles_on_board_revealed = {N: [False] * len(north), S: [False] * len(south)}
-    state.coins = {N: 5, S: 5}
+    state.positions = {R: red, B: blue}
+    state.piece_ids = {R: [0, 1][: len(red)], B: [2, 3][: len(blue)]}
+    state.tiles_on_board_revealed = {R: [False] * len(red), B: [False] * len(blue)}
+    state.coins = {R: 5, B: 5}
     return state
 
 
@@ -43,9 +43,9 @@ def test_a_sunbeam_aims_at_the_first_tile_straight_along_a_line_to_an_enemy():
         [Square(4, 2), Square(2, 2)],
         [Square(0, 2), Square(4, 4)],
     )
-    state.positions[S].append(Square(3, 3))
-    state.piece_ids[S].append(4)
-    state.tiles_on_board_revealed[S].append(False)
+    state.positions[B].append(Square(3, 3))
+    state.piece_ids[B].append(4)
+    state.tiles_on_board_revealed[B].append(False)
     assert sorted(valid_targets(Square(4, 2), state)[Tile.SUNBEAM]) == [
         Square(2, 2),
         Square(4, 4),
@@ -56,7 +56,7 @@ def test_a_sunbeam_needs_an_enemy_in_the_line_and_its_cost():
     state = _state([Square(4, 2), Square(2, 2)], [Square(0, 0)])
     assert Tile.SUNBEAM not in valid_targets(Square(4, 2), state)
     state = _state([Square(4, 2)], [Square(0, 2)])
-    state.coins[N] = SUNBEAM_COST - 1
+    state.coins[R] = SUNBEAM_COST - 1
     assert Tile.SUNBEAM not in valid_targets(Square(4, 2), state)
 
 
@@ -65,7 +65,7 @@ def test_a_sunbeam_reveals_every_tile_to_the_edge_and_nothing_else():
     assert take_action(Square(4, 2), Tile.SUNBEAM, Square(3, 2), state) == []
     assert _revealed(state, Square(3, 2)) and _revealed(state, Square(1, 2))
     assert not _revealed(state, Square(4, 2)) and not _revealed(state, Square(1, 1))
-    assert state.coins[N] == 5 - SUNBEAM_COST
+    assert state.coins[R] == 5 - SUNBEAM_COST
 
 
 def test_a_reflected_sunbeam_reveals_the_claimer_and_everything_behind_it_free():
@@ -73,7 +73,7 @@ def test_a_reflected_sunbeam_reveals_the_claimer_and_everything_behind_it_free()
     assert reflect_action(Square(2, 2), Tile.SUNBEAM, Square(1, 2), state) == []
     assert _revealed(state, Square(2, 2)) and _revealed(state, Square(4, 2))
     assert not _revealed(state, Square(1, 2)) and not _revealed(state, Square(0, 2))
-    assert state.coins == {N: 5, S: 5}
+    assert state.coins == {R: 5, B: 5}
 
 
 def test_a_sunbeams_preview_lights_its_tile_to_the_edge():
@@ -122,8 +122,8 @@ def test_what_a_sunbeam_shows_is_logged():
     players = {p: Bot("easy", delay=0) for p in Player}
     for player, bot in players.items():
         bot.start_game(state, player)
-    state.new_log_turn(N)
-    logged = state.log(LogKind.CLAIM, N, Tile.SUNBEAM)
+    state.new_log_turn(R)
+    logged = state.log(LogKind.CLAIM, R, Tile.SUNBEAM)
     asyncio.run(
         _resolve_action(
             Square(4, 2), Tile.SUNBEAM, Square(3, 2), state, dict(players), logged
@@ -131,6 +131,6 @@ def test_what_a_sunbeam_shows_is_logged():
     )
     lit = [e for e in state.public_log[-1].events if e.kind == LogKind.LIT]
     assert [(e.player, e.action) for e in lit] == [
-        (N, state.tiles_on_board[N][1]),
-        (S, state.tiles_on_board[S][0]),
+        (R, state.tiles_on_board[R][1]),
+        (B, state.tiles_on_board[B][0]),
     ]

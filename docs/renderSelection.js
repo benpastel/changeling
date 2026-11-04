@@ -256,7 +256,7 @@ function drawClaim(board, selection) {
 
   if (reflect) {
     const reflected = document.createElement("span");
-    reflected.classList.add("claimed", player === "north" ? "south" : "north");
+    reflected.classList.add("claimed", player === "red" ? "blue" : "red");
     reflected.textContent = reflect;
     note.append(reflected);
   }
@@ -272,7 +272,7 @@ function isAttack(board, {player, action, target}) {
   // a backstabber kills an enemy behind it, but otherwise moves
   if (action === "🀇") {
     const [row, col] = target;
-    const enemy = player === "north" ? "south" : "north";
+    const enemy = player === "red" ? "blue" : "red";
     return findCell(board, row, col).classList.contains(enemy);
   }
   return ATTACKS.has(action);

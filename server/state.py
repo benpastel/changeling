@@ -130,7 +130,7 @@ class State(BaseModel):
     ice: list[Square] = []
 
     # the enemy webs each player is caught in, which hold until the turn they lose
-    caught: dict[Player, list[Square]] = {Player.N: [], Player.S: []}
+    caught: dict[Player, list[Square]] = {Player.RED: [], Player.BLUE: []}
 
     # log of public information, grouped by turn
     public_log: list[LogTurn]
@@ -164,7 +164,7 @@ class State(BaseModel):
     x2_tile: Tile | None  # tile with doubled effectiveness, set via bonus square
     smite_cost: int  # automatically smite when money reaches this amount
 
-    game_score: dict[Player, int] = {Player.N: 0, Player.S: 0}
+    game_score: dict[Player, int] = {Player.RED: 0, Player.BLUE: 0}
 
     @computed_field  # type: ignore[misc]
     @property
@@ -262,11 +262,11 @@ class State(BaseModel):
 
     def all_positions(self) -> list[Square]:
         """All squares with a tile on board, regardless of player"""
-        return self.positions[Player.N] + self.positions[Player.S]
+        return self.positions[Player.RED] + self.positions[Player.BLUE]
 
     def all_webs(self) -> list[Square]:
         """All squares with a web on board, regardless of player"""
-        return self.webs[Player.N] + self.webs[Player.S]
+        return self.webs[Player.RED] + self.webs[Player.BLUE]
 
     def new_log_turn(self, player: Player | None) -> None:
         """Start grouping log events under a new turn."""
@@ -303,14 +303,14 @@ class State(BaseModel):
         """
         See if anyone has won the game.
         """
-        north_dead = len(self.tiles_on_board[Player.N]) == 0
-        south_dead = len(self.tiles_on_board[Player.S]) == 0
-        if north_dead and south_dead:
+        red_dead = len(self.tiles_on_board[Player.RED]) == 0
+        blue_dead = len(self.tiles_on_board[Player.BLUE]) == 0
+        if red_dead and blue_dead:
             return GameResult.DRAW
-        elif south_dead:
-            return GameResult.NORTH_WINS
-        elif north_dead:
-            return GameResult.SOUTH_WINS
+        elif blue_dead:
+            return GameResult.RED_WINS
+        elif red_dead:
+            return GameResult.BLUE_WINS
         else:
             return GameResult.ONGOING
 
@@ -507,8 +507,8 @@ def new_state(
     bonus_position, exchange_positions = bonus_and_exchange_positions()
 
     start_coins = {
-        Player.N: start_coins_per_player,
-        Player.S: start_coins_per_player,
+        Player.RED: start_coins_per_player,
+        Player.BLUE: start_coins_per_player,
     }
 
     # 3 copies of each tile
@@ -525,28 +525,34 @@ def new_state(
     return State(
         tiles_in_game=tiles_in_game,
         tiles_in_hand={
-            Player.N: tiles[0:2],
-            Player.S: tiles[2:4],
+            Player.RED: tiles[0:2],
+            Player.BLUE: tiles[2:4],
         },
-        tiles_on_board={Player.N: tiles[4:6], Player.S: tiles[6:8]},
-        tiles_on_board_revealed={Player.N: [False, False], Player.S: [False, False]},
+        tiles_on_board={Player.RED: tiles[4:6], Player.BLUE: tiles[6:8]},
+        tiles_on_board_revealed={
+            Player.RED: [False, False],
+            Player.BLUE: [False, False],
+        },
         positions=start_positions,
-        piece_ids={Player.N: [0, 1], Player.S: [2, 3]},
+        piece_ids={Player.RED: [0, 1], Player.BLUE: [2, 3]},
         next_piece_id=4,
         exchange_tiles=[
             [tiles[8], tiles[9]],
             [tiles[10], tiles[11]],
         ],
-        exchange_tiles_revealed={Player.N: [False, False], Player.S: [False, False]},
+        exchange_tiles_revealed={
+            Player.RED: [False, False],
+            Player.BLUE: [False, False],
+        },
         unused_tiles=tiles[12:15],
         unused_revealed={
-            Player.N: [False, False, False],
-            Player.S: [False, False, False],
+            Player.RED: [False, False, False],
+            Player.BLUE: [False, False, False],
         },
         discard=[],
         coins=start_coins,
-        webs={Player.N: [], Player.S: []},  # no webs start on board
-        skip_next_turn={Player.N: False, Player.S: False},
+        webs={Player.RED: [], Player.BLUE: []},  # no webs start on board
+        skip_next_turn={Player.RED: False, Player.BLUE: False},
         go_again=False,
         public_log=[],
         current_player=first_player,

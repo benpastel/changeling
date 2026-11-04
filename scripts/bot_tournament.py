@@ -18,7 +18,7 @@ from server.game import play_one_game
 from server.state import LogKind
 
 
-async def play(north: str, south: str, games: int, seed: int) -> None:
+async def play(red: str, blue: str, games: int, seed: int) -> None:
     rng = random.Random(seed)
     random.seed(seed)
     wins: Counter = Counter()
@@ -32,15 +32,15 @@ async def play(north: str, south: str, games: int, seed: int) -> None:
         # a match is ten games, with the same bots throughout, as at a table
         if game % 10 == 0:
             bots = {
-                Player.N: Bot(north, delay=0, rng=rng),
-                Player.S: Bot(south, delay=0, rng=rng),
+                Player.RED: Bot(red, delay=0, rng=rng),
+                Player.BLUE: Bot(blue, delay=0, rng=rng),
             }
             for player in Player:
                 stats[player] += before[player]
             before = {p: Counter() for p in Player}
         agents: dict[Player, Agent] = {p: b for p, b in bots.items()}
-        first = Player.S if game % 2 == 0 else Player.N
-        names = {Player.N: north, Player.S: south}
+        first = Player.BLUE if game % 2 == 0 else Player.RED
+        names = {Player.RED: red, Player.BLUE: blue}
         try:
             _, result = await asyncio.wait_for(
                 play_one_game(
@@ -49,13 +49,13 @@ async def play(north: str, south: str, games: int, seed: int) -> None:
                 timeout=30,
             )
         except TimeoutError:
-            state = bots[Player.N]._state
+            state = bots[Player.RED]._state
             assert state is not None
             print(f"game {game} stuck after {len(state.public_log)} turns")
             print(state.public_log[-3:], state.positions, state.coins)
             raise
         wins[result] += 1
-        state = bots[Player.N]._state
+        state = bots[Player.RED]._state
         assert state is not None
         turns += len(state.public_log)
         for player in Player:
@@ -81,12 +81,12 @@ async def play(north: str, south: str, games: int, seed: int) -> None:
         stats[player] += before[player]
     took = time.monotonic() - began
     print(
-        f"north {north}: {wins[GameResult.NORTH_WINS]}  "
-        f"south {south}: {wins[GameResult.SOUTH_WINS]}  "
+        f"red {red}: {wins[GameResult.RED_WINS]}  "
+        f"blue {blue}: {wins[GameResult.BLUE_WINS]}  "
         f"draws: {wins[GameResult.DRAW]}  "
         f"({turns / games:.0f} turns a game, {took / games * 1000:.0f}ms a game)"
     )
-    for player, level in ((Player.N, north), (Player.S, south)):
+    for player, level in ((Player.RED, red), (Player.BLUE, blue)):
         k, s = kinds[player], stats[player]
         challenges = s["challenge right"] + s["challenge wrong"]
         claims = s["true claim"] + s["lie"]
@@ -100,6 +100,6 @@ async def play(north: str, south: str, games: int, seed: int) -> None:
 
 
 if __name__ == "__main__":
-    north, south = sys.argv[1], sys.argv[2]
+    red, blue = sys.argv[1], sys.argv[2]
     games = int(sys.argv[3]) if len(sys.argv) > 3 else 100
-    asyncio.run(play(north, south, games, seed=1))
+    asyncio.run(play(red, blue, games, seed=1))

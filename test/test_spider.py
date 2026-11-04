@@ -7,7 +7,7 @@ from server.constants import OtherAction, Player, Response, Square, Tile
 from server.game import MOVES_PER_TURN, _play_one_turn, _resolve_action
 from server.state import LogKind, State, new_state
 
-N, S = Player.N, Player.S
+R, B = Player.RED, Player.BLUE
 
 
 def _state() -> State:
@@ -15,10 +15,10 @@ def _state() -> State:
     state = new_state(
         {p: 0 for p in Player},
         [Tile.SPIDER, Tile.KNIVES, Tile.HOOK, Tile.FIREBALL, Tile.BIRD],
-        N,
+        R,
         {p: p.value for p in Player},
     )
-    state.positions = {N: [Square(2, 0), Square(0, 0)], S: [Square(4, 4), Square(4, 0)]}
+    state.positions = {R: [Square(2, 0), Square(0, 0)], B: [Square(4, 4), Square(4, 0)]}
     # keep the special squares out of the way
     state.exchange_positions = [Square(0, 3), Square(0, 4)]
     state.bonus_position = Square(0, 2)
@@ -61,10 +61,10 @@ def test_a_spider_goes_again_but_only_once():
 
 def test_a_web_holds_its_catch_until_their_lost_turn_then_goes():
     state = _state()
-    state.webs[S] = [Square(2, 1), Square(3, 3)]
+    state.webs[B] = [Square(2, 1), Square(3, 3)]
     piece = state.piece_at(Square(2, 0))
-    state.new_log_turn(N)
-    logged = state.log(LogKind.MOVE, N, OtherAction.MOVE)
+    state.new_log_turn(R)
+    logged = state.log(LogKind.MOVE, R, OtherAction.MOVE)
     players = _players(state)
     asyncio.run(
         _resolve_action(
@@ -72,14 +72,14 @@ def test_a_web_holds_its_catch_until_their_lost_turn_then_goes():
         )
     )
     # caught, and the web stays to show it
-    assert state.skip_next_turn[N]
-    assert state.webs[S] == [Square(2, 1), Square(3, 3)]
+    assert state.skip_next_turn[R]
+    assert state.webs[B] == [Square(2, 1), Square(3, 3)]
     web = [e for e in state.public_log[-1].events if e.kind == LogKind.WEB]
     assert [e.piece for e in web] == [piece]
 
-    # north's next turn is lost, naming the piece, and the web that caught it goes
+    # red's next turn is lost, naming the piece, and the web that caught it goes
     asyncio.run(_play_one_turn(state, players))
     skip = state.public_log[-1].events
     assert [(e.kind, e.piece) for e in skip] == [(LogKind.SKIP, piece)]
-    assert state.webs[S] == [Square(3, 3)]
-    assert state.caught[N] == [] and not state.skip_next_turn[N]
+    assert state.webs[B] == [Square(3, 3)]
+    assert state.caught[R] == [] and not state.skip_next_turn[R]

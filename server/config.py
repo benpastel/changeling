@@ -103,8 +103,8 @@ def choose_start_positions() -> dict[Player, list[Square]]:
     random.shuffle(top)
     random.shuffle(bottom)
     return {
-        Player.N: [top[0], top[1]],
-        Player.S: [bottom[0], bottom[1]],
+        Player.RED: [top[0], top[1]],
+        Player.BLUE: [bottom[0], bottom[1]],
     }
 
 

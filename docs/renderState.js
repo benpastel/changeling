@@ -5,8 +5,8 @@ import {
   COLUMNS,
   TILES,
   PLAYERS,
-  NORTH_PLAYER,
-  SOUTH_PLAYER,
+  RED_PLAYER,
+  BLUE_PLAYER,
   HIDDEN_TILE,
   EXCHANGE_MARK,
   ACTION_NAMES,
@@ -17,10 +17,10 @@ import {
 
 
 function createBoard(board, mySide) {
-  // a 5x5 grid of squares, each knowing its own row and column; whoever is south sees
-  // it as stored, and north sees it turned around, so your own side is always at the bottom
+  // a 5x5 grid of squares, each knowing its own row and column; blue sees it
+  // as stored, and red sees it turned around, so your own side is always at the bottom
   board.innerHTML = "";
-  const flip = mySide === NORTH_PLAYER;
+  const flip = mySide === RED_PLAYER;
   for (let i = 0; i < ROWS; i++) {
     for (let j = 0; j < COLUMNS; j++) {
       const row = flip ? ROWS - 1 - i : i;
@@ -71,7 +71,7 @@ function renderBoard(board, player_view) {
   // set board empty
   for (const cell of board.querySelectorAll(".cell")) {
     cell.innerHTML = "";
-    cell.classList.remove(NORTH_PLAYER, SOUTH_PLAYER, 'board-tile', 'special', 'bonus', 'exchange');
+    cell.classList.remove(RED_PLAYER, BLUE_PLAYER, 'board-tile', 'special', 'bonus', 'exchange');
   }
 
   // create the bonus square

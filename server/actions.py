@@ -320,10 +320,10 @@ def valid_targets(start: Square, state: State) -> dict[Action, list[Square]]:
     }
 
     # harvester costs no coins, and moves forward one square to an empty square.
-    # forward is increasing rows for Player.N, and decreasing rows for Player.S
+    # forward is increasing rows for Player.RED, and decreasing rows for Player.BLUE
     forward = (
         Square(start.row + 1, start.col)
-        if state.current_player == Player.N
+        if state.current_player == Player.RED
         else Square(start.row - 1, start.col)
     )
     actions[Tile.HARVESTER] = [forward] if forward in empty_targets else []
@@ -362,12 +362,12 @@ def valid_targets(start: Square, state: State) -> dict[Action, list[Square]]:
 
     if coins >= BACKSTAB_COST:
         # backstabber kills any enemy behind the start square
-        # "behind" for Player.N is lower rows, and for Player.S is higher rows
+        # "behind" for Player.RED is lower rows, and for Player.BLUE is higher rows
         actions[Tile.BACKSTABBER] += [
             s
             for s in enemy_targets
-            if (state.current_player == Player.N and s.row < start.row)
-            or (state.current_player == Player.S and s.row > start.row)
+            if (state.current_player == Player.RED and s.row < start.row)
+            or (state.current_player == Player.BLUE and s.row > start.row)
         ]
 
     if coins >= FIREBALL_COST:

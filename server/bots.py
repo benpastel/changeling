@@ -393,7 +393,7 @@ class Bot:
         self.rng = rng or random.Random()
         self.seat = DummySeat()
         self._state: State | None = None
-        self.me = Player.N
+        self.me = Player.RED
         # what we chose on each board we've chosen on, so as not to go round in circles
         self._chosen: dict[tuple, set] = {}
         # how often we've done what, over every game, for tuning

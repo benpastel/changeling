@@ -1,5 +1,5 @@
 """
-Both players agree on the colours, north red and south blue, while each sees the board
+Both players agree on who is red and who is blue, while each sees the board
 from their own side, theirs at the bottom.
 """
 
@@ -19,15 +19,15 @@ COLOURS = """() => {
   };
   const strip = (where) => {
     const element = document.querySelector(`.strip.${where}`);
-    const side = element.classList.contains("north") ? "north" : "south";
+    const side = element.classList.contains("red") ? "red" : "blue";
     return {side, colour: colour(`.strip.${where} .name`)};
   };
   return {
     top: strip("top"),
     bottom: strip("bottom"),
-    north: colour(".board .cell.north .piece"),
-    south: colour(".board .cell.south .piece"),
-    red: getComputedStyle(document.documentElement).getPropertyValue("--red").trim(),
+    red: colour(".board .cell.red .piece"),
+    blue: colour(".board .cell.blue .piece"),
+    redToken: getComputedStyle(document.documentElement).getPropertyValue("--red").trim(),
   };
 }"""
 
@@ -58,8 +58,8 @@ def test_both_players_agree_on_the_colours(browser, site):
 
     seen = {}
     for name, page in [("host", host), ("guest", guest)]:
-        page.wait_for_selector(".board .cell.north .piece")
-        page.wait_for_selector(".board .cell.south .piece")
+        page.wait_for_selector(".board .cell.red .piece")
+        page.wait_for_selector(".board .cell.blue .piece")
         seen[name] = page.evaluate(COLOURS)
 
     host_view, guest_view = seen["host"], seen["guest"]
@@ -67,13 +67,13 @@ def test_both_players_agree_on_the_colours(browser, site):
     assert host_view["bottom"]["side"] != guest_view["bottom"]["side"]
     assert host_view["bottom"]["side"] == guest_view["top"]["side"]
     for view in (host_view, guest_view):
-        red = _rgb(view["red"])
-        assert view["north"] == red != view["south"]
+        red = _rgb(view["redToken"])
+        assert view["red"] == red != view["blue"]
         for where in ("top", "bottom"):
             strip = view[where]
-            assert (strip["colour"] == red) == (strip["side"] == "north")
+            assert (strip["colour"] == red) == (strip["side"] == "red")
     # the same colours for both
-    assert host_view["north"] == guest_view["north"]
-    assert host_view["south"] == guest_view["south"]
+    assert host_view["red"] == guest_view["red"]
+    assert host_view["blue"] == guest_view["blue"]
     for context, _ in pages:
         context.close()

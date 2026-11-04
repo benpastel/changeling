@@ -481,13 +481,13 @@ function flip(element, from, to, delay = 0) {
 // unused list.  Each tile is hidden where it's going until it arrives.  Drawn again
 // meanwhile (not `start`), the tiles yet to arrive are hidden again.
 function deal(board, view, start) {
-  const [north, south] = PLAYERS.map((player) => [
+  const [red, blue] = PLAYERS.map((player) => [
     ...view.positions[player].map(([row, col]) => pieceAt(board, row, col)),
     ...document.querySelectorAll(`.strip.${player} .hand-tile`),
   ]);
   const targets = [];
-  for (let i = 0; i < Math.max(north.length, south.length); i++) {
-    targets.push(north[i], south[i]);
+  for (let i = 0; i < Math.max(red.length, blue.length); i++) {
+    targets.push(red[i], blue[i]);
   }
   targets.push(...board.querySelectorAll(".exchange .cell-marks .board-tile"));
   targets.push(...document.querySelectorAll(".unused-contents .acc-tile"));

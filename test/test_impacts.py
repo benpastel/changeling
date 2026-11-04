@@ -10,10 +10,10 @@ def _state():
     state = new_state(
         {p: 0 for p in Player},
         [Tile.RAM, Tile.GRENADES, Tile.FIREBALL, Tile.HOOK, Tile.KNIVES],
-        Player.N,
+        Player.RED,
         {p: p.value for p in Player},
     )
-    state.coins = {Player.N: 5, Player.S: 5}
+    state.coins = {Player.RED: 5, Player.BLUE: 5}
     return state
 
 
@@ -22,8 +22,8 @@ def test_a_ram_impact_is_what_the_ram_then_does():
     # the ram goes down to (2, 1); one enemy can be knocked to (4, 1), and the
     # other is pinned against the edge
     state.positions = {
-        Player.N: [Square(1, 1), Square(0, 4)],
-        Player.S: [Square(3, 1), Square(2, 0)],
+        Player.RED: [Square(1, 1), Square(0, 4)],
+        Player.BLUE: [Square(3, 1), Square(2, 0)],
     }
     impact = impacts(Square(1, 1), state)[Tile.RAM][Square(2, 1)]
     assert sorted(impact.moved) == [
@@ -32,14 +32,14 @@ def test_a_ram_impact_is_what_the_ram_then_does():
     ]
     assert impact.killed == [Square(2, 0)]
     assert take_action(Square(1, 1), Tile.RAM, Square(2, 1), state) == impact.killed
-    assert Square(4, 1) in state.positions[Player.S]
+    assert Square(4, 1) in state.positions[Player.BLUE]
 
 
 def test_a_grenade_impact_covers_three_by_three_and_kills_inside_it():
     state = _state()
     state.positions = {
-        Player.N: [Square(0, 2), Square(0, 4)],
-        Player.S: [Square(3, 2), Square(4, 4)],
+        Player.RED: [Square(0, 2), Square(0, 4)],
+        Player.BLUE: [Square(3, 2), Square(4, 4)],
     }
     impact = impacts(Square(0, 2), state)[Tile.GRENADES][Square(2, 2)]
     assert len(impact.area) == 9
@@ -50,8 +50,8 @@ def test_a_grenade_impact_covers_three_by_three_and_kills_inside_it():
 def test_working_out_impacts_leaves_the_game_alone():
     state = _state()
     state.positions = {
-        Player.N: [Square(1, 1), Square(0, 4)],
-        Player.S: [Square(3, 1), Square(2, 0)],
+        Player.RED: [Square(1, 1), Square(0, 4)],
+        Player.BLUE: [Square(3, 1), Square(2, 0)],
     }
     before = state.model_dump()
     found = impacts(Square(1, 1), state)

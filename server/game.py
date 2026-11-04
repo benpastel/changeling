@@ -838,10 +838,10 @@ async def _show_log_keeping_selection(
 def _log_game_over(state: State) -> None:
     state.new_log_turn(None)
     result = state.game_result()
-    if result == GameResult.NORTH_WINS:
-        state.log(LogKind.WIN, Player.N)
-    elif result == GameResult.SOUTH_WINS:
-        state.log(LogKind.WIN, Player.S)
+    if result == GameResult.RED_WINS:
+        state.log(LogKind.WIN, Player.RED)
+    elif result == GameResult.BLUE_WINS:
+        state.log(LogKind.WIN, Player.BLUE)
     else:
         state.log(LogKind.DRAW)
 
@@ -902,8 +902,8 @@ class Tally:
 
     wins: dict[Player, int] = field(default_factory=lambda: {p: 0 for p in Player})
     points: dict[Player, int] = field(default_factory=lambda: {p: 0 for p in Player})
-    # south moves first in the first game, then the first move alternates
-    first_player: Player = Player.S
+    # blue moves first in the first game, then the first move alternates
+    first_player: Player = Player.BLUE
 
 
 async def play_one_match(
@@ -929,9 +929,10 @@ async def play_one_match(
             time_mode,
             pause,
         )
-        winner = {GameResult.NORTH_WINS: Player.N, GameResult.SOUTH_WINS: Player.S}.get(
-            result
-        )
+        winner = {
+            GameResult.RED_WINS: Player.RED,
+            GameResult.BLUE_WINS: Player.BLUE,
+        }.get(result)
         if winner is not None:
             tally.wins[winner] += 1
         for player, points in game_score.items():

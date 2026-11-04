@@ -86,10 +86,10 @@ function showScreen(screen) {
 
 // the opponent's side, given ours
 function otherSide(side) {
-  return side === "north" ? "south" : "north";
+  return side === "red" ? "blue" : "red";
 }
 
-// North is red and south blue, for both players; which of them is you and them (see
+// Both players see red as red and blue as blue; which of them is you and them (see
 // style.css) follows the side we sit on, or none before we've a seat
 function sit(side) {
   if (side) {
@@ -111,13 +111,13 @@ window.addEventListener("DOMContentLoaded", () => {
   let orientation = null;
   let lastView = null;
   function orient(mySide) {
-    const side = mySide || "south";
+    const side = mySide || "blue";
     if (side === orientation) {
       return;
     }
     orientation = side;
     for (const [strip, owner] of [[topStrip, otherSide(side)], [bottomStrip, side]]) {
-      strip.classList.remove("north", "south");
+      strip.classList.remove("red", "blue");
       strip.classList.add(owner);
     }
     createBoard(board, side);
@@ -125,7 +125,7 @@ window.addEventListener("DOMContentLoaded", () => {
       renderGame(lastView);
     }
   }
-  orient("south");
+  orient("blue");
 
   const lobby = document.querySelector(".lobby");
   const room = document.querySelector(".room");
@@ -192,7 +192,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let reserveLeft = Infinity;
   function showClocks() {
     for (const strip of [topStrip, bottomStrip]) {
-      const owner = strip.classList.contains("north") ? "north" : "south";
+      const owner = strip.classList.contains("red") ? "red" : "blue";
       const allowance = strip.querySelector(".allowance");
       const reserve = strip.querySelector(".reserve");
       if (!clock) {
@@ -326,7 +326,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!document.body.classList.contains("at-game") || !result.hidden || !lastView) {
         return null;
       }
-      const me = table?.mySide || "south";
+      const me = table?.mySide || "blue";
       return {board, view: lastView, highlight, selection, me, them: otherSide(me)};
     },
   );
@@ -359,7 +359,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!outcome) {
       return;
     }
-    const me = table?.mySide || "south";
+    const me = table?.mySide || "blue";
     const them = otherSide(me);
     const who = (side) => (side === me ? "you" : "them");
 

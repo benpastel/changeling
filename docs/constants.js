@@ -5,9 +5,9 @@ const ROWS = 5;
 const COLUMNS = 5;
 
 // must match css classes and python enums
-const NORTH_PLAYER = "north";
-const SOUTH_PLAYER = "south";
-const PLAYERS = [NORTH_PLAYER, SOUTH_PLAYER];
+const RED_PLAYER = "red";
+const BLUE_PLAYER = "blue";
+const PLAYERS = [RED_PLAYER, BLUE_PLAYER];
 
 // must match css classes
 const HIGHLIGHT = "highlight"; // squares, actions, or tiles the player can select right now
@@ -378,8 +378,8 @@ export {
   EXCHANGE_MARK,
   ROWS,
   COLUMNS,
-  NORTH_PLAYER,
-  SOUTH_PLAYER,
+  RED_PLAYER,
+  BLUE_PLAYER,
   PLAYERS,
   HIGHLIGHT,
   CHOSEN_START,

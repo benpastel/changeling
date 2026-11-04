@@ -4,7 +4,7 @@ Users, tables, and the connections between them.
 A user is identified by an id their browser keeps in localStorage, so a refresh or a
 dropped connection reattaches them to the same seat, mid-game included.
 
-A table has two seats, NORTH and SOUTH, each empty, a user, or the bot.  Which is
+A table has two seats, RED and BLUE, each empty, a user, or the bot.  Which is
 which doesn't matter to the players, who each see themselves at the bottom; the host
 takes one and the next to join, or the bot, the other.  The host picks the tiles and
 and the time control and starts the match; the match then runs until either player
@@ -246,7 +246,7 @@ class Lobby:
         table = Table(
             id=_random_id(5),
             host_id=user.id,
-            seats={Player.N: BOT if bot else None, Player.S: user.id},
+            seats={Player.RED: BOT if bot else None, Player.BLUE: user.id},
         )
         self.tables[table.id] = table
         user.table_id = table.id

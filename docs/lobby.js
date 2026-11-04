@@ -4,7 +4,7 @@
 // which tiles, before the match starts).
 //
 // The room is laid out like the board: them above, the tiles between, you below, each
-// in the colour of their side (north red, south blue).
+// in their colour, red or blue.
 
 import {
   HIDDEN_TILE,
@@ -85,7 +85,7 @@ function renderLobby(panel, tables, named, actions) {
 
 function renderOpponent(table, actions) {
   const seat = element("div", "seat them");
-  const side = table.mySide === "north" ? "south" : "north";
+  const side = table.mySide === "red" ? "blue" : "red";
   const occupant = table.seats[side];
   const buttons = element("div", "seat-buttons");
 

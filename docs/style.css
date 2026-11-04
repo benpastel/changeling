@@ -1,21 +1,17 @@
 :root {
-  /* The players' colours, the same for both of them: north is red and south blue,
-     each seeing the board from their own side.  You and them are whichever of those
-     you are, as data-side on the page says (see main.js): south until you sit north.
-     The page's own blue and red (buttons, switches, costs, warnings) are the accent
-     and the alert, whoever you are. */
+  /* The players are red and blue, the same for both of them, each seeing the board
+     from their own side.  You and them are whichever of those you are, as data-side
+     on the page says (see main.js): blue until you sit as red.  The page's own blue
+     and red (buttons, switches, costs, warnings) are the accent and the alert,
+     whoever you are. */
   --red: #c4302b;
   --blue: #1f4fb4;
   --wash-red: #fbeaea;
   --wash-blue: #e9effb;
-  --north: var(--red);
-  --south: var(--blue);
-  --wash-north: var(--wash-red);
-  --wash-south: var(--wash-blue);
-  --you: var(--south);
-  --them: var(--north);
-  --wash: var(--wash-south);
-  --wash-them: var(--wash-north);
+  --you: var(--blue);
+  --them: var(--red);
+  --wash: var(--wash-blue);
+  --wash-them: var(--wash-red);
   --accent: var(--blue);
   --alert: var(--red);
   --ink: #141414;
@@ -99,12 +95,11 @@
   color-scheme: dark;
 }
 
-/* sitting north, you're red */
-:root[data-side="north"] {
-  --you: var(--north);
-  --them: var(--south);
-  --wash: var(--wash-north);
-  --wash-them: var(--wash-south);
+:root[data-side="red"] {
+  --you: var(--red);
+  --them: var(--blue);
+  --wash: var(--wash-red);
+  --wash-them: var(--wash-blue);
 }
 
 body {
@@ -742,11 +737,11 @@ board is sized relative to it (cqmin), so the layout holds at any laptop size.
   align-self: start;
 }
 /* the strip of whoever the game is waiting on, washed in their colour */
-.strip.north.acting {
-  background-color: var(--wash-north);
+.strip.red.acting {
+  background-color: var(--wash-red);
 }
-.strip.south.acting {
-  background-color: var(--wash-south);
+.strip.blue.acting {
+  background-color: var(--wash-blue);
 }
 .strip .who {
   min-width: 0;
@@ -854,8 +849,8 @@ board is sized relative to it (cqmin), so the layout holds at any laptop size.
   font-size: calc(var(--strip) * 0.62);
   line-height: 1;
 }
-.strip.north .name, .strip.north .amount, .strip.north .hand-tile { color: var(--north); }
-.strip.south .name, .strip.south .amount, .strip.south .hand-tile { color: var(--south); }
+.strip.red .name, .strip.red .amount, .strip.red .hand-tile { color: var(--red); }
+.strip.blue .name, .strip.blue .amount, .strip.blue .hand-tile { color: var(--blue); }
 
 /* ------------------------------------------------------------------ board */
 /* the board's frame sits centred on the column dividers above and below it: its box
@@ -983,8 +978,8 @@ way, at their own scale
   inset: 0;
   pointer-events: none;
 }
-.web.north { --web: var(--north); }
-.web.south { --web: var(--south); }
+.web.red { --web: var(--red); }
+.web.blue { --web: var(--blue); }
 .rule-square.webbed { --web: var(--you); }
 .web,
 .rule-square.webbed {
@@ -1997,10 +1992,10 @@ the same place
   box-sizing: border-box;
 }
 
-/* whose it is: red for north, blue for south */
-.north {
-  color: var(--north);
+/* whose it is */
+.red {
+  color: var(--red);
 }
-.south {
-  color: var(--south);
+.blue {
+  color: var(--blue);
 }

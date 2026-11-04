@@ -2,21 +2,20 @@ from enum import Enum
 from typing import NamedTuple
 
 
-# There are two players:
-#   North - displayed on top
-#   South - displayed on bottom
+# There are two players, red and blue, each seeing the board from their own side; the
+# board is stored as blue sees it, red's home row at the top.
 #
 # the enum values must match the javascript & css values
 class Player(str, Enum):
-    N = "north"
-    S = "south"
+    RED = "red"
+    BLUE = "blue"
 
     def format_for_log(self) -> str:
         return self.value.upper()
 
 
 def other_player(p: Player) -> Player:
-    return Player.S if p == Player.N else Player.N
+    return Player.BLUE if p == Player.RED else Player.RED
 
 
 ROWS = 5
@@ -161,8 +160,8 @@ class Claim(NamedTuple):
 
 class GameResult(str, Enum):
     ONGOING = "Ongoing"
-    NORTH_WINS = "North Player Wins!"
-    SOUTH_WINS = "South Player Wins!"
+    RED_WINS = "Red Player Wins!"
+    BLUE_WINS = "Blue Player Wins!"
 
     # a draw is possible if both players are simultaneously killed by a chromatic grenade
     DRAW = "Draw"
