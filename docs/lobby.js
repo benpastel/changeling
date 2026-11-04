@@ -3,8 +3,8 @@
 // The lobby (your name and the open tables) and the table room (who's playing, and with
 // which tiles, before the match starts).
 //
-// You're always blue and whoever you'll play is red, as in the game, so the room is laid
-// out like the board: them above, the tiles between, you below.
+// The room is laid out like the board: them above, the tiles between, you below, each
+// in the colour of their side (north red, south blue).
 
 import {
   HIDDEN_TILE,
@@ -73,9 +73,9 @@ function renderLobby(panel, tables, named, actions) {
   }
   for (const table of tables) {
     const row = element("div", "table-row");
-    const host = Object.values(table.seats).find((name) => name !== null) ?? "";
+    const [side, host] = Object.entries(table.seats).find(([, name]) => name !== null) ?? ["", ""];
     row.append(
-      element("span", "row-name them", host),
+      element("span", `row-name ${side}`, host),
       setPreview(table.mode, table.tiles, "row-tiles"),
       button("btn small", "join", () => actions.join(table.id), !named),
     );

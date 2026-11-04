@@ -1,17 +1,28 @@
 :root {
-  /* you and them: blue and red; north is the opponent unless you sit north
-     (see .me-north) */
-  --you: #1f4fb4;
-  --them: #c4302b;
-  --north: var(--them);
-  --south: var(--you);
+  /* The players' colours, the same for both of them: north is red and south blue,
+     each seeing the board from their own side.  You and them are whichever of those
+     you are, as data-side on the page says (see main.js): south until you sit north.
+     The page's own blue and red (buttons, switches, costs, warnings) are the accent
+     and the alert, whoever you are. */
+  --red: #c4302b;
+  --blue: #1f4fb4;
+  --wash-red: #fbeaea;
+  --wash-blue: #e9effb;
+  --north: var(--red);
+  --south: var(--blue);
+  --wash-north: var(--wash-red);
+  --wash-south: var(--wash-blue);
+  --you: var(--south);
+  --them: var(--north);
+  --wash: var(--wash-south);
+  --wash-them: var(--wash-north);
+  --accent: var(--blue);
+  --alert: var(--red);
   --ink: #141414;
   --muted: #5c5c5c;
   --faint: #9a9a9a;
   --line: #d4d4d4;
   --frame: #6b6b6b;
-  --wash: #e9effb;
-  --wash-them: #fbeaea;
 
   /* the slightly rounded corner of a tile, shared by every button shell */
   --shell-radius: 0.4vmin;
@@ -56,15 +67,15 @@
 /* dark: the same page by night.  The tiles keep their faces a shade above the page,
    so they still read as tiles; blue and red are lifted to keep their contrast */
 :root[data-theme="dark"] {
-  --you: #7ea6ff;
-  --them: #ff7b72;
+  --blue: #7ea6ff;
+  --red: #ff7b72;
   --ink: #e6e4df;
   --muted: #a4a4a4;
   --faint: #6f737a;
   --line: #30343b;
   --frame: #8a8f98;
-  --wash: #1b2541;
-  --wash-them: #3b1f20;
+  --wash-blue: #1b2541;
+  --wash-red: #3b1f20;
   --bg: #131518;
   --surface: #1c1f24;
   --hover: #272b32;
@@ -86,6 +97,14 @@
   /* face-down grey tiles are solid, so they're kept quieter than the outlined ones */
   --back: #4b5059;
   color-scheme: dark;
+}
+
+/* sitting north, you're red */
+:root[data-side="north"] {
+  --you: var(--north);
+  --them: var(--south);
+  --wash: var(--wash-north);
+  --wash-them: var(--wash-south);
 }
 
 body {
@@ -166,8 +185,8 @@ the tiles between.
 }
 .btn.primary {
   color: var(--on-strong);
-  background-color: var(--you);
-  border-color: var(--you);
+  background-color: var(--accent);
+  border-color: var(--accent);
 }
 .btn.primary:hover {
   background-color: var(--primary-hover);
@@ -247,7 +266,6 @@ the tiles between.
   font-size: 16px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--them);
 }
 
 /* a table's tiles, with a dashed slot for each still to be picked */
@@ -294,7 +312,7 @@ the tiles between.
   line-height: 1;
 }
 .set-tile:hover .set-glyph {
-  color: var(--you);
+  color: var(--accent);
 }
 .set-name {
   font-size: 10px;
@@ -528,10 +546,6 @@ strips, unless the side columns need the width. As the window narrows, the left
 column stacks its contents before the board gives up any size. Everything on the
 board is sized relative to it (cqmin), so the layout holds at any laptop size.
 */
-.container.me-north {
-  --north: var(--you);
-  --south: var(--them);
-}
 .container {
   --radius: 8px;
 
@@ -613,7 +627,7 @@ board is sized relative to it (cqmin), so the layout holds at any laptop size.
   cursor: pointer;
 }
 .sidebar.lists .in-play:hover {
-  color: var(--you);
+  color: var(--accent);
 }
 .sidebar.lists .smite-cost {
   padding: 0 18px;
@@ -728,11 +742,11 @@ board is sized relative to it (cqmin), so the layout holds at any laptop size.
   align-self: start;
 }
 /* the strip of whoever the game is waiting on, washed in their colour */
-.strip.acting {
-  background-color: var(--wash);
+.strip.north.acting {
+  background-color: var(--wash-north);
 }
-.strip.top.acting {
-  background-color: var(--wash-them);
+.strip.south.acting {
+  background-color: var(--wash-south);
 }
 .strip .who {
   min-width: 0;
@@ -805,7 +819,7 @@ board is sized relative to it (cqmin), so the layout holds at any laptop size.
 }
 /* a reserve that's nearly gone */
 .clock .reserve.low {
-  color: var(--them);
+  color: var(--alert);
 }
 /* a clock that isn't running at all */
 .clock.stopped {
@@ -1366,7 +1380,7 @@ the same place
   transition: transform 150ms;
 }
 .setting input:checked + .switch {
-  background-color: var(--you);
+  background-color: var(--accent);
 }
 .setting input:checked + .switch::after {
   transform: translateX(14px);
@@ -1374,10 +1388,10 @@ the same place
 .setting input[type=range] {
   width: 100px;
   margin: 0;
-  accent-color: var(--you);
+  accent-color: var(--accent);
 }
 .setting input:focus-visible + .switch {
-  outline: 2px solid var(--you);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -1408,8 +1422,8 @@ the same place
   color: var(--muted);
 }
 /* a use's price, red to pay or blue to gain; a second use is an alternative */
-.tip-price.cost { color: var(--them); }
-.tip-price.gain { color: var(--you); }
+.tip-price.cost { color: var(--alert); }
+.tip-price.gain { color: var(--accent); }
 .tip-or { color: var(--faint); }
 .tip-note {
   margin-top: 3px;
@@ -1509,8 +1523,8 @@ the same place
   height: 30px;
   padding: 0 14px;
   color: var(--on-strong);
-  background-color: var(--you);
-  border: 1px solid var(--you);
+  background-color: var(--accent);
+  border: 1px solid var(--accent);
 }
 .guide-primary:hover {
   background-color: var(--primary-hover);
@@ -1851,8 +1865,8 @@ the same place
   font-size: calc(var(--sq) * 0.5);
   line-height: 1.5;
 }
-.rule-price.cost { color: var(--them); }
-.rule-price.gain { color: var(--you); }
+.rule-price.cost { color: var(--alert); }
+.rule-price.gain { color: var(--accent); }
 .rule-text {
   margin: 0;
   padding: 0;
@@ -1983,7 +1997,7 @@ the same place
   box-sizing: border-box;
 }
 
-/* whose piece it is: jade for you, cinnabar for the opponent, whichever side you sit */
+/* whose it is: red for north, blue for south */
 .north {
   color: var(--north);
 }

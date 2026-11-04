@@ -11,6 +11,9 @@ import {RESPONSES} from "./constants.js";
 
 const KEY = "arena.tutorial";
 
+// each side's colour, the same for both players (see style.css)
+const COLOURS = {north: "red", south: "blue"};
+
 const all = (selector) => () => [...document.querySelectorAll(selector)];
 const one = (selector) => () => [document.querySelector(selector)].filter(Boolean);
 
@@ -22,7 +25,7 @@ const panelHas = (name) => document.querySelector(`.board .choice-panel .option[
 // the steps over the board, before the first move
 const STEPS = [
   {
-    text: "<b>Blue is you, red is them.</b> Each side has four tiles: two on the board, two in hand, hidden from the other side. Lose all four and you lose.",
+    text: (game) => `<b>You're ${COLOURS[game.me]}, they're ${COLOURS[game.them]}.</b> Each side has four tiles: two on the board, two in hand, hidden from the other side. Lose all four and you lose.`,
     point: (game) => pieces(game.me),
     spots: (game) => () => [...pieces(game.me)(), ...myHand()],
   },
@@ -148,7 +151,7 @@ function setUpTutorial(guide, pause, game) {
     const {text, point, spots} = STEPS[step];
     const last = step === STEPS.length - 1;
     guide.show({
-      text,
+      text: typeof text === "function" ? text(now) : text,
       point: point(now),
       spots: spots ? spots(now) : undefined,
       dim: true,

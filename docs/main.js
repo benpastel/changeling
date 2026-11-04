@@ -89,6 +89,16 @@ function otherSide(side) {
   return side === "north" ? "south" : "north";
 }
 
+// North is red and south blue, for both players; which of them is you and them (see
+// style.css) follows the side we sit on, or none before we've a seat
+function sit(side) {
+  if (side) {
+    document.documentElement.dataset.side = side;
+  } else {
+    delete document.documentElement.dataset.side;
+  }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   const container = document.querySelector(".container");
   const board = document.querySelector(".board");
@@ -106,7 +116,6 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
     orientation = side;
-    container.classList.toggle("me-north", side === "north");
     for (const [strip, owner] of [[topStrip, otherSide(side)], [bottomStrip, side]]) {
       strip.classList.remove("north", "south");
       strip.classList.add(owner);
@@ -451,6 +460,7 @@ window.addEventListener("DOMContentLoaded", () => {
           }
         }
         table = event.table;
+        sit(table.mySide);
         wantTable = table.id;
         setHash(`#/t/${table.id}`);
         if (table.playing) {
@@ -466,6 +476,7 @@ window.addEventListener("DOMContentLoaded", () => {
         break;
       case "left":
         table = null;
+        sit(null);
         wantTable = null;
         setHash("#/");
         break;
