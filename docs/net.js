@@ -11,11 +11,9 @@ function getWebSocketServer() {
   if (window.location.hostname === "localhost") {
     // locally, the game server listens on the port after the page's: 8000 => 8001
     return `ws://localhost:${parseInt(window.location.port) + 1}/`;
-  } else if (window.location.host === "benpastel.github.io" || window.location.host === "benpastel.com") {
-    // github pages => render
-    return "wss://arena-wsbg.onrender.com";
   } else {
-    throw new Error(`Unsupported host: ${window.location.host}`);
+    // otherwise the server that served the page
+    return `wss://${window.location.host}/`;
   }
 }
 

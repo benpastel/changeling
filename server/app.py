@@ -2,9 +2,12 @@
 
 import asyncio
 import json
+import mimetypes
 import os
 import signal
 from http import HTTPStatus
+from pathlib import Path
+from typing import Any
 
 from websockets.exceptions import ConnectionClosed
 from websockets.server import WebSocketServerProtocol, serve
@@ -47,11 +50,31 @@ async def handler(websocket: WebSocketServerProtocol) -> None:
             await LOBBY.disconnect(user, websocket)
 
 
-async def health_check(path: str, request_headers: object) -> tuple | None:
-    # plain HTTP probe for render's health check; anything else proceeds to the websocket handshake
+DOCS = Path(__file__).resolve().parent.parent / "docs"
+
+
+async def process_request(path: str, request_headers: Any) -> tuple | None:
+    """
+    Plain HTTP: render's health check and the client's static files.
+    Websocket upgrades return None and proceed to the handshake.
+    """
     if path == "/healthz":
         return HTTPStatus.OK, [], b"OK\n"
-    return None
+    if request_headers.get("Upgrade", "").lower() == "websocket":
+        return None
+    return _static(path)
+
+
+def _static(path: str) -> tuple:
+    name = path.split("?", 1)[0].split("#", 1)[0].lstrip("/") or "index.html"
+    file = (DOCS / name).resolve()
+    if file.parent != DOCS or not file.is_file():
+        return HTTPStatus.NOT_FOUND, [], b"Not found\n"
+    content_type = mimetypes.guess_type(file.name)[0] or "application/octet-stream"
+    if content_type.startswith("text/") or content_type.endswith("javascript"):
+        content_type += "; charset=utf-8"
+    headers = [("Content-Type", content_type), ("Cache-Control", "no-cache")]
+    return HTTPStatus.OK, headers, file.read_bytes()
 
 
 async def main() -> None:
@@ -64,7 +87,7 @@ async def main() -> None:
     print(f"Serving websocket server on port {port}.")
 
     reaper = asyncio.create_task(LOBBY.reap_forever())
-    async with serve(handler, "", port, process_request=health_check):
+    async with serve(handler, "", port, process_request=process_request):
         await stop
     reaper.cancel()
 
